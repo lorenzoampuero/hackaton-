@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es-CL">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pulmón Urbano — Inteligencia Satelital y Cartera de Arbolado Municipal</title>
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header class="topbar no-print">
+    <div class="topbar-left">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true">PU</span>
+        <div>
+          <h1>Pulmón Urbano</h1>
+          <p class="brand-sub">Inteligencia satelital verde</p>
+        </div>
+      </div>
+
+      <nav class="main-nav" role="tablist" aria-label="Vistas principales">
+        <button type="button" class="nav-tab active" data-view="mapa" role="tab" aria-selected="true">Mapa satelital</button>
+        <button type="button" class="nav-tab" data-view="informe-ia" role="tab" aria-selected="false">Informe IA de Inversión</button>
+        <button type="button" class="nav-tab" data-view="casos" role="tab" aria-selected="false">
+          Casos y Archivos <span class="nav-count" id="navCasosCount">0</span>
+        </button>
+      </nav>
+    </div>
+
+    <div class="topbar-right">
+      <label class="comuna-picker" for="selectComuna">
+        <span>Comuna</span>
+        <select id="selectComuna" aria-label="Seleccionar comuna"></select>
+      </label>
+      <div class="util-actions">
+        <button type="button" class="btn btn-quiet" id="btnComparar">Comparar</button>
+        <button type="button" class="btn btn-quiet" id="btnPlanes">Planes B2B2G</button>
+        <button type="button" class="btn btn-quiet" id="btnAyuda">Guía</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- VISTA 1: MAPA SATELITAL -->
+  <div class="view-pane active no-print" id="view-mapa">
+    <section class="kpi-strip" id="kpiStrip" aria-label="Indicadores comunales multi-satélite">
+      <div class="kpi-card">
+        <span class="kpi-label">Calor verano Landsat 8/9</span>
+        <strong class="kpi-val tabular" id="kpiLst">—</strong>
+        <span class="kpi-note" id="kpiLstNota">—</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Dosel vs cemento (WorldCover 2021)</span>
+        <strong class="kpi-val tabular" id="kpiDosel">—</strong>
+        <span class="kpi-note" id="kpiDoselNota">—</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Sitios OSM con lectura satelital</span>
+        <strong class="kpi-val tabular" id="kpiSitios">—</strong>
+        <span class="kpi-note" id="kpiSitiosNota">—</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Aire PM2.5 y UV (Copernicus CAMS)</span>
+        <strong class="kpi-val tabular" id="kpiAire">—</strong>
+        <span class="kpi-note" id="kpiAireNota">—</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Árboles estimados hacia meta 30%</span>
+        <strong class="kpi-val tabular" id="kpiArboles">—</strong>
+        <span class="kpi-note">Meta 30% dosel comunal</span>
+      </div>
+    </section>
+
+    <main class="workspace">
+      <aside class="sidebar" id="sidebar">
+        <div class="panel-block">
+          <div class="panel-title-row">
+            <h2>Capa y filtros</h2>
+            <button type="button" class="btn-mini mobile-only" id="btnToggleSidebar">Cerrar</button>
+          </div>
+
+          <div class="filter-stack">
+            <label class="field-label">
+              <span>Capa del mapa</span>
+              <select id="selectCapaMapa" aria-label="Capa satelital del mapa">
+                <option value="prioridad" selected>Prioridad satelital integrada</option>
+                <option value="calor">Isla de calor Landsat (°C)</option>
+                <option value="ndvi">Vigor vegetal Sentinel-2 (NDVI / SAVI)</option>
+                <option value="ndmi">Humedad foliar Sentinel-2 (NDMI)</option>
+                <option value="censo">Censo 2024: techos y hacinamiento</option>
+              </select>
+            </label>
+
+            <div class="filter-pair">
+              <label class="field-label">
+                <span>Señal</span>
+                <select id="selectSenal">
+                  <option value="todas">Todas</option>
+                  <option value="isla_calor">Calor &ge; 36,5 °C</option>
+                  <option value="brecha_dosel">Dosel &lt; 20%</option>
+                  <option value="estres_hidrico">Estrés hojas</option>
+                  <option value="veg_caida">Caída NDVI</option>
+                  <option value="calor_vulnerabilidad">Vivienda + sombra</option>
+                </select>
+              </label>
+              <label class="field-label">
+                <span>Buscar</span>
+                <input type="search" id="inputBuscar" placeholder="Parque o ID…">
+              </label>
+            </div>
+
+            <label class="checkbox-row">
+              <input type="checkbox" id="chkOcultarPequenos">
+              <span>Solo parques &ge; 5.000 m&sup2; (PNG HD)</span>
+            </label>
+          </div>
+        </div>
+
+        <div class="panel-block">
+          <div class="panel-title-row">
+            <h2>Modelo de ranking</h2>
+          </div>
+
+          <div class="segmented" role="group" aria-label="Modo de ranking">
+            <button type="button" class="seg-btn active" id="btnModoSat" data-modo="satelital">Solo satélites</button>
+            <button type="button" class="seg-btn" id="btnModoCenso" data-modo="mixto">+ Censo térmico</button>
+          </div>
+          <p class="hint" id="descModoRanking">
+            Ordena únicamente por calor superficial Landsat °C, falta de dosel/cemento WorldCover y vigor Sentinel-2.
+          </p>
+
+          <div id="censoSlidersWrap" class="censo-sliders hidden">
+            <div class="panel-title-row" style="margin-top:8px;">
+              <span class="hint" style="margin:0;font-weight:600;">Pesos Censo 2024 habitacional</span>
+              <button type="button" class="btn-link" id="btnResetPesos">Restablecer</button>
+            </div>
+            <div class="slider-item">
+              <div class="slider-head">
+                <label for="pesoTecho">Techos zinc / fibrocemento / precarios</label>
+                <strong class="tabular" id="valPesoTecho">40%</strong>
+              </div>
+              <input type="range" id="pesoTecho" min="0" max="100" step="5" value="40">
+            </div>
+            <div class="slider-item">
+              <div class="slider-head">
+                <label for="pesoHacin">Viviendas con hacinamiento</label>
+                <strong class="tabular" id="valPesoHacin">30%</strong>
+              </div>
+              <input type="range" id="pesoHacin" min="0" max="100" step="5" value="30">
+            </div>
+            <div class="slider-item">
+              <div class="slider-head">
+                <label for="pesoBajoVerde">Déficit de área verde (m&sup2;/hab)</label>
+                <strong class="tabular" id="valPesoBajoVerde">30%</strong>
+              </div>
+              <input type="range" id="pesoBajoVerde" min="0" max="100" step="5" value="30">
+            </div>
+          </div>
+        </div>
+
+        <div class="panel-block top5-block">
+          <div class="panel-title-row">
+            <h2>Top 5 en <span id="top5ComunaNombre">—</span></h2>
+          </div>
+          <ol class="top5-list" id="listaTop5"></ol>
+        </div>
+      </aside>
+
+      <section class="map-stage" aria-label="Mapa satelital interactivo">
+        <div class="map-toolbar-mobile">
+          <button type="button" class="btn btn-quiet" id="btnAbrirPanelMovil">Filtros y Top 5</button>
+          <span id="estadoFiltroResumen" class="hint-inline"></span>
+        </div>
+
+        <div class="basemap-switcher" role="group" aria-label="Mapa base">
+          <button type="button" class="bm-btn active" data-basemap="claro">Mapa claro</button>
+          <button type="button" class="bm-btn" data-basemap="satelite">Satélite HD</button>
+          <button type="button" class="bm-btn" data-basemap="osm">Calles</button>
+        </div>
+
+        <div id="map"></div>
+        <div class="map-legend" id="mapLegend" aria-live="polite"></div>
+
+        <aside class="site-drawer hidden" id="siteDrawer" aria-label="Ficha técnica del sitio">
+          <div class="drawer-header">
+            <div style="min-width:0;">
+              <div class="drawer-badges" id="drawerBadges"></div>
+              <h2 id="drawerTitle">Selecciona un parque</h2>
+              <p class="drawer-sub" id="drawerSub"></p>
+            </div>
+            <div class="drawer-header-actions">
+              <button type="button" class="btn btn-outline-primary" id="btnGuardarCasoSitio" title="Guardar en Casos y Archivos">Guardar caso</button>
+              <button type="button" class="btn-close" id="btnCerrarDrawer" aria-label="Cerrar ficha">&times;</button>
+            </div>
+          </div>
+
+          <div class="tabs-bar" role="tablist">
+            <button type="button" class="tab-btn active" data-tab="resumen" role="tab">Resumen</button>
+            <button type="button" class="tab-btn" data-tab="imagenes" role="tab">Satélites</button>
+            <button type="button" class="tab-btn" data-tab="serie" role="tab">Serie</button>
+            <button type="button" class="tab-btn" data-tab="inversion" role="tab">Inversión</button>
+            <button type="button" class="tab-btn" data-tab="informe" role="tab">Informe</button>
+          </div>
+
+          <div class="drawer-body">
+            <div class="tab-pane active" id="tab-resumen"></div>
+            <div class="tab-pane" id="tab-imagenes"></div>
+            <div class="tab-pane" id="tab-serie"></div>
+            <div class="tab-pane" id="tab-inversion"></div>
+            <div class="tab-pane" id="tab-informe"></div>
+          </div>
+        </aside>
+      </section>
+    </main>
+  </div>
+
+  <!-- VISTA 2: INFORME IA DE INVERSIÓN -->
+  <section class="view-pane view-page no-print" id="view-informe-ia" aria-label="Informe ejecutivo de inversión">
+    <div class="page-container">
+      <div class="page-header">
+        <div>
+          <h2>Informe IA de Inversión Prioritaria</h2>
+          <p class="page-sub">Cartera cuantificada de los parques prioritarios donde concentrar arbolado, sombra y mitigación térmica.</p>
+        </div>
+        <div class="page-controls">
+          <button type="button" class="btn btn-primary" id="btnGenerarIAVivo" disabled>Redactar con IA</button>
+          <button type="button" class="btn btn-quiet hidden" id="btnRestaurarIA">Ver plantilla base</button>
+          <button type="button" class="btn btn-quiet" id="btnIaDocx">Word (.docx)</button>
+          <button type="button" class="btn btn-quiet" id="btnIaPdf">PDF</button>
+          <button type="button" class="btn btn-quiet" id="btnIaGuardarCaso">Guardar</button>
+          <button type="button" class="btn btn-quiet" id="btnCopiarPaqueteIA">Copiar JSON</button>
+        </div>
+      </div>
+
+      <div class="ia-toolbar">
+        <div class="scope-pills" id="iaScopePills" role="group" aria-label="Ámbito del informe">
+          <button type="button" class="pill-btn active" data-scope="intercomunal">Todas (4 comunas)</button>
+          <button type="button" class="pill-btn" data-scope="cerro_navia">Cerro Navia</button>
+          <button type="button" class="pill-btn" data-scope="san_miguel">San Miguel</button>
+          <button type="button" class="pill-btn" data-scope="quilicura">Quilicura</button>
+          <button type="button" class="pill-btn" data-scope="vitacura">Vitacura</button>
+        </div>
+        <select id="selectAmbitoIA" class="hidden" aria-hidden="true">
+          <option value="intercomunal">Gran Santiago (4 comunas)</option>
+          <option value="cerro_navia">Cerro Navia</option>
+          <option value="san_miguel">San Miguel</option>
+          <option value="quilicura">Quilicura</option>
+          <option value="vitacura">Vitacura</option>
+        </select>
+        <p class="ia-status" id="estadoIAVivo" role="status" aria-live="polite">Comprobando servicio IA…</p>
+      </div>
+
+      <div id="contenidoInformeIA"></div>
+    </div>
+  </section>
+
+  <!-- VISTA 3: CASOS Y ARCHIVOS -->
+  <section class="view-pane view-page no-print" id="view-casos" aria-label="Repositorio de casos y archivos">
+    <div class="page-container">
+      <div class="page-header">
+        <div>
+          <h2>Casos y Archivos Guardados</h2>
+          <p class="page-sub">Expedientes insignia, carteras por comuna y análisis guardados en sesión o terreno.</p>
+        </div>
+        <div class="page-controls">
+          <label class="btn btn-primary" style="display:inline-flex;align-items:center;gap:6px;">
+            + Importar archivo (.json)
+            <input type="file" id="inputImportarCaso" accept=".json,application/json" style="display:none;">
+          </label>
+        </div>
+      </div>
+
+      <div class="cases-layout">
+        <aside class="cases-list-col">
+          <div class="cases-filters">
+            <input type="search" id="inputBuscarCaso" placeholder="Filtrar expedientes por sitio o comuna…">
+            <div class="filter-pair">
+              <select id="selectFiltroTipoCaso" aria-label="Filtrar por tipo">
+                <option value="todos">Todos los tipos</option>
+                <option value="pitch">Casos del pitch (3)</option>
+                <option value="cartera">Carteras de inversión (5)</option>
+                <option value="guardado">Mis casos guardados</option>
+                <option value="top5">Top 5 verificados</option>
+              </select>
+              <select id="selectFiltroComunaCaso" aria-label="Filtrar por comuna">
+                <option value="todas">Todas las comunas</option>
+                <option value="cerro_navia">Cerro Navia</option>
+                <option value="san_miguel">San Miguel</option>
+                <option value="vitacura">Vitacura</option>
+                <option value="quilicura">Quilicura</option>
+              </select>
+            </div>
+          </div>
+          <div class="cases-cards" id="listaCasosArchivo"></div>
+        </aside>
+
+        <article class="cases-reader-col" id="visorCasoArchivo">
+          <p class="hint">Selecciona un expediente de la izquierda para inspeccionar mapas, notas de terreno y exportar.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <footer class="app-footer no-print">
+    <span>Fuentes: NASA/USGS Landsat 8/9 · Copernicus Sentinel-2 &amp; CAMS (Open-Meteo CC BY 4.0 no comercial) · ESA WorldCover 2021 (CC BY 4.0) · OpenStreetMap (ODbL) · INE Censo 2024.</span>
+    <span>Montos y planes: <strong>hipótesis (sin verificar)</strong>. NDMI mide humedad foliar (hojas), no suelo.</span>
+  </footer>
+
+  <div class="modal-backdrop hidden no-print" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 id="modalTitle">Modal</h2>
+        <button type="button" class="btn-close" id="btnCerrarModal" aria-label="Cerrar">&times;</button>
+      </div>
+      <div class="modal-content" id="modalContent"></div>
+    </div>
+  </div>
+
+  <section id="printArea" class="print-only" aria-hidden="true"></section>
+
+  <script src="vendor/leaflet/leaflet.js"></script>
+  <script src="vendor/chartjs/chart.umd.min.js"></script>
+  <script src="vendor/docx/index.umd.js"></script>
+
+  <script src="data/resumen.js"></script>
+  <script src="data/casos.js"></script>
+  <script src="data/informes.js"></script>
+  <script src="data/informes_inversion.js"></script>
+  <script src="data/intervenciones.js"></script>
+
+  <script src="app.js"></script>
+</body>
+</html>

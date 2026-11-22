@@ -1,0 +1,74 @@
+# Pulmón Urbano — reglas de negocio y parámetros del pipeline.
+# Todos los umbrales son HIPÓTESIS iniciales del informe v4; se calibran con un piloto.
+
+umbral_vulnerabilidad_alta: 60     # 0 a 100; desde aquí la vulnerabilidad es "alta"
+umbral_estres_z: -1.0              # NDMI frente a sus pares; bajo esto, "estrés"
+percentil_poco_verde: 25           # NDVI bajo este percentil del conjunto = "poco verde"
+
+pesos_vulnerabilidad:              # se normalizan a 1; editables también en la página
+  pct_60_mas: 0.4                  # el informe pedía 65+; el Censo 2024 por manzana publica 60+
+  densidad: 0.3
+  bajo_verde_per_capita: 0.3
+
+confianza:
+  area_minima_m2: 5000             # bajo esto, confianza baja
+  observaciones_minimas: 6         # observaciones válidas en los últimos 12 meses
+  antiguedad_maxima_dias: 15       # última imagen válida más antigua que esto = baja
+  alta_area_m2: 10000              # hipótesis propia para separar "alta" de "media"
+  alta_observaciones: 12
+  alta_pixeles: 50
+
+senales:
+  veg_caida_pct: -15               # NDVI mensual frente al mismo mes del año anterior, 2 meses seguidos
+  estres_hidrico_z: -1.5
+  brecha_dosel_puntos: 10          # puntos bajo la meta de 30 %
+
+sitios:
+  area_minima_m2: 1000             # sitios más chicos no se analizan
+  borde_interior_m: 10             # se achica el polígono para evitar píxeles de borde
+  pixeles_minimos: 5               # con menos píxeles válidos el valor es nulo
+  radio_entorno_m: 400
+
+dosel:
+  meta_pct: 30
+  copa_m2_min: 20
+  copa_m2_max: 50
+  costo_arbol_clp_min: 45000       # hipótesis sin verificar (documento v3)
+  costo_arbol_clp_max: 70000
+
+sentinel2:
+  stac_url: https://earth-search.aws.element84.com/v1
+  coleccion: sentinel-2-l2a
+  meses_historia: 24
+  nubes_escena_max_pct: 60
+  scl_descartar: [0, 1, 3, 8, 9, 10, 11]
+  hilos: 6
+
+imagenes:
+  area_minima_m2: 5000             # solo se generan recortes para sitios medibles
+  comuna_valida_min_pct: 98        # la escena elegida debe estar casi sin nubes en la comuna
+  margen_m: 80
+  lado_px: 480
+
+censo:
+  pmtiles_url: https://visualizador.ine.gob.cl/Datos_Procesados/Manzanas_Entidades_CPV24.pmtiles
+  zoom: 14
+
+worldcover:
+  version: v200
+  anio: 2021
+  clase_arboles: 10
+
+evento_calor:                      # caso de evento; la cifra de superficie es de prensa, no nuestra
+  fecha: "2026-01-29"
+  semanas_ventana: 8
+
+# Recuadro para desambiguar nombres de comunas (por defecto, Región Metropolitana): sur, oeste, norte, este
+region_bbox: [-34.30, -71.80, -32.90, -69.70]
+
+# Comunas a procesar. Para agregar otra: uv run python -m pipeline.run --agregar "Nombre"
+comunas:
+  - {slug: cerro_navia, nombre: "Cerro Navia"}
+  - {slug: san_miguel, nombre: "San Miguel"}
+  - {slug: vitacura, nombre: "Vitacura"}
+  - {slug: quilicura, nombre: "Quilicura"}

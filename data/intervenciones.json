@@ -1,0 +1,265 @@
+{
+  "version": "v4",
+  "etiqueta_costos": "hipótesis (sin verificar)",
+  "nota_costos": "Todos los precios por intervención, por árbol plantado y de los planes de suscripción corresponden a hipótesis de trabajo sin validación de mercado ni licitación oficial.",
+  "meta_dosel_min_pct": 30,
+  "copa_m2_min": 20,
+  "copa_m2_max": 50,
+  "costo_arbol_clp_min": 45000,
+  "costo_arbol_clp_max": 70000,
+  "intervenciones": [
+    {
+      "id": "arborizacion_calles",
+      "nombre": "Arborización en calles de acceso y borde del parque",
+      "cuando_aplica": [
+        "brecha_dosel",
+        "calor_vulnerabilidad"
+      ],
+      "descripcion": "Plantación de arbolado nativo o adaptado a déficit hídrico en veredas y entorno inmediato (< 400 m) para cerrar brecha de dosel hacia la meta mínima de 30%.",
+      "unidad": "árboles instalados con tutor y alcorque",
+      "costo_unitario_min_clp": 45000,
+      "costo_unitario_max_clp": 70000,
+      "etiqueta_costo": "hipótesis (sin verificar)",
+      "fondo_principal": "espacios_publicos_minvu",
+      "tiempo_implementacion_meses": "4-12"
+    },
+    {
+      "id": "reconversion_cesped",
+      "nombre": "Reconversión de césped de alto consumo hídrico a cobertura xerófita",
+      "cuando_aplica": [
+        "estres_hidrico",
+        "veg_caida"
+      ],
+      "descripcion": "Sustitución gradual de paños de césped ornamental con alto requerimiento de agua por especies nativas y cubresuelos de baja demanda hídrica.",
+      "unidad": "proyecto por paño priorizado",
+      "costo_rango_min_clp": 4500000,
+      "costo_rango_max_clp": 18000000,
+      "etiqueta_costo": "hipótesis (sin verificar)",
+      "referencia_ahorro_hidrico": "Referencia de reducción de demanda hídrica estimada de 50% a 70% frente a césped tradicional (sin medir en este prototipo).",
+      "fondo_principal": "fpa_mma",
+      "tiempo_implementacion_meses": "3-9"
+    },
+    {
+      "id": "riego_eficiente",
+      "nombre": "Modernización a riego por goteo sectorizado con control horario",
+      "cuando_aplica": [
+        "estres_hidrico"
+      ],
+      "descripcion": "Reemplazo de aspersión abierta por riego tecnificado nocturno o de madrugada para sostener el vigor foliar (NDMI) cuando coincide estrés hídrico foliar y calor.",
+      "unidad": "sistema por zona verde",
+      "costo_rango_min_clp": 3500000,
+      "costo_rango_max_clp": 14000000,
+      "etiqueta_costo": "hipótesis (sin verificar)",
+      "fondo_principal": "pmu_subdere",
+      "tiempo_implementacion_meses": "2-6"
+    },
+    {
+      "id": "mantencion_verificacion",
+      "nombre": "Inspección en terreno y mantención operativa prioritaria",
+      "cuando_aplica": [
+        "veg_caida",
+        "estres_hidrico"
+      ],
+      "descripcion": "Visita de cuadrilla municipal para verificar causa en terreno (mantención, vandalismo, falla de riego o remodelación) y priorizar mantención correctiva.",
+      "unidad": "campaña de inspección + ficha de terreno",
+      "costo_rango_min_clp": 800000,
+      "costo_rango_max_clp": 3000000,
+      "etiqueta_costo": "hipótesis (sin verificar)",
+      "fondo_principal": "pmu_subdere",
+      "tiempo_implementacion_meses": "1-2"
+    },
+    {
+      "id": "sombra_refugios",
+      "nombre": "Sombreaderos y refugios climáticos de proximidad (< 400 m)",
+      "cuando_aplica": [
+        "calor_vulnerabilidad",
+        "brecha_dosel"
+      ],
+      "descripcion": "Infraestructura liviana de sombra, bancas cubiertas y puntos de hidratación en sectores con alta proporción de población de 60 años o más y baja cobertura arbórea.",
+      "unidad": "módulo de sombra e hidratación",
+      "costo_rango_min_clp": 5500000,
+      "costo_rango_max_clp": 15000000,
+      "etiqueta_costo": "hipótesis (sin verificar)",
+      "fondo_principal": "quiero_mi_barrio",
+      "tiempo_implementacion_meses": "3-8"
+    },
+    {
+      "id": "medicion_linea_base",
+      "nombre": "Levantamiento de línea base e inventario arbóreo georreferenciado",
+      "cuando_aplica": [
+        "sin_senal",
+        "veg_caida",
+        "brecha_dosel"
+      ],
+      "descripcion": "Catastro en terreno con fotografía georreferenciada, estado fitosanitario y especies presentes para sitios pequeños o con menos de 6 observaciones satelitales válidas.",
+      "unidad": "campaña comunal / paquete técnico",
+      "costo_rango_min_clp": 1500000,
+      "costo_rango_max_clp": 5000000,
+      "etiqueta_costo": "hipótesis (sin verificar)",
+      "fondo_principal": "fpa_mma",
+      "tiempo_implementacion_meses": "1-3"
+    }
+  ],
+  "fondos_publicos": [
+    {
+      "id": "espacios_publicos_minvu",
+      "nombre": "Programa de Espacios Públicos (MINVU)",
+      "institucion": "Ministerio de Vivienda y Urbanismo",
+      "aplica_para": [
+        "arborizacion_calles",
+        "sombra_refugios",
+        "reconversion_cesped"
+      ],
+      "enfoque": "Recuperación y mejoramiento de parques, plazas y ejes cívicos urbanos en comunas con déficit de áreas verdes.",
+      "requisito_evidencia": "Diagnóstico territorial cuantitativo con priorización poblacional, planos/cartografía y estimación presupuestaria."
+    },
+    {
+      "id": "fpa_mma",
+      "nombre": "Fondo de Protección Ambiental (FPA — MMA)",
+      "institucion": "Ministerio del Medio Ambiente",
+      "aplica_para": [
+        "reconversion_cesped",
+        "medicion_linea_base",
+        "arborizacion_calles"
+      ],
+      "enfoque": "Iniciativas ambientales locales, adaptación al cambio climático, arborización nativa y eficiencia hídrica.",
+      "requisito_evidencia": "Línea base ambiental verificable, participación local o municipal y métricas de seguimiento."
+    },
+    {
+      "id": "pmu_subdere",
+      "nombre": "Programa Mejoramiento Urbano y Equipamiento Comunal (PMU — SUBDERE)",
+      "institucion": "Subsecretaría de Desarrollo Regional y Administrativo",
+      "aplica_para": [
+        "riego_eficiente",
+        "mantencion_verificacion",
+        "sombra_refugios"
+      ],
+      "enfoque": "Infraestructura urbana menor de rápida ejecución municipal (< 1 año), riego tecnificado y equipamiento comunitario.",
+      "requisito_evidencia": "Justificación de urgencia operativa, localización en manzana censal y ficha técnica resumida."
+    },
+    {
+      "id": "quiero_mi_barrio",
+      "nombre": "Programa Quiero Mi Barrio (MINVU)",
+      "institucion": "Ministerio de Vivienda y Urbanismo",
+      "aplica_para": [
+        "sombra_refugios",
+        "arborizacion_calles",
+        "reconversion_cesped"
+      ],
+      "enfoque": "Mejoramiento barrial integral en barrios prioritarios con alta vulnerabilidad social.",
+      "requisito_evidencia": "Indicadores sociodemográficos del entorno (Censo 2024), déficit de áreas verdes y priorización participativa."
+    }
+  ],
+  "modelo_negocio": {
+    "tipo": "B2B2G + SaaS municipal (enfoque Compra Ágil ChileCompra)",
+    "etiqueta_general": "hipótesis (sin verificar)",
+    "regla_freemium": "El visor público abierto y el paquete de diagnóstico inicial (hasta 5 sitios prioritarios con mapa y ficha básica) permanecen gratuitos para habilitar postulación y transparencia ciudadana.",
+    "umbral_compra_agil_utm": 100,
+    "umbral_compra_agil_clp_aprox": 7240000,
+    "nota_compra_agil": "Planes base diseñados por debajo del tope de Compra Ágil (100 UTM ≈ $7.240.000 CLP; hipótesis de mercado para acelerar contratación directa sin licitación larga).",
+    "escalera_planes": [
+      {
+        "nivel": 0,
+        "nombre": "Nivel 0 — Visor Abierto y Diagnóstico Base",
+        "publico_objetivo": "Municipalidades, organizaciones barriales, prensa y ciudadanía",
+        "precio_clp": 0,
+        "periodicidad": "Gratuito",
+        "etiqueta": "hipótesis (sin verificar)",
+        "incluye": [
+          "Mapa abierto de parques OSM con cálculo NDVI/NDMI y vulnerabilidad Censo 2024",
+          "Top 5 de sitios prioritarios y ficha descargable para primera revisión en terreno",
+          "Comparador intercomunal y guía metodológica abierta"
+        ],
+        "horas_soporte": "0 horas dedicadas (autoservicio)"
+      },
+      {
+        "nivel": 1,
+        "nombre": "Nivel 1 — Diagnóstico para Postulación a Fondos",
+        "publico_objetivo": "SECPLA / Dirección de Medio Ambiente municipal",
+        "precio_min_clp": 1800000,
+        "precio_max_clp": 3200000,
+        "periodicidad": "Pago único por paquete",
+        "etiqueta": "hipótesis (sin verificar)",
+        "incluye": [
+          "Informe técnico verificable listo para adjuntar a MINVU / PMU SUBDERE / FPA",
+          "Anexo tabular completo por manzana censal y sitio (.csv, .geojson, .docx)",
+          "Comparación frente a comuna control y priorización de arborización"
+        ],
+        "horas_soporte": "8–12 horas técnicas incluidas"
+      },
+      {
+        "nivel": 2,
+        "nombre": "Nivel 2 — Monitoreo Mensual Municipal",
+        "publico_objetivo": "Dirección de Aseo y Ornato / Medio Ambiente",
+        "precio_min_clp": 450000,
+        "precio_max_clp": 750000,
+        "periodicidad": "Mensual (bajo tope Compra Ágil anual)",
+        "etiqueta": "hipótesis (sin verificar)",
+        "incluye": [
+          "Actualización mensual de Sentinel-2 NDVI/NDMI y cruce climático Open-Meteo",
+          "Alertas tempranas de caída foliar y estrés hídrico en verano",
+          "Tablero compartido con exportables mensuales para cuadrillas"
+        ],
+        "horas_soporte": "4 horas/mes de revisión"
+      },
+      {
+        "nivel": 3,
+        "nombre": "Nivel 3 — Paquete Estival + Terreno",
+        "publico_objetivo": "Comunas con alta isla de calor o déficit de dosel",
+        "precio_min_clp": 4800000,
+        "precio_max_clp": 6900000,
+        "periodicidad": "Anual (dentro de tope Compra Ágil 100 UTM)",
+        "etiqueta": "hipótesis (sin verificar)",
+        "incluye": [
+          "Monitoreo mensual + seguimiento semanal en temporada crítica (diciembre–marzo)",
+          "Integración de evidencia fotográfica georreferenciada de cuadrillas en terreno",
+          "Dossier completo de cierre para rendición de fondos públicos"
+        ],
+        "horas_soporte": "24 horas/año de acompañamiento"
+      },
+      {
+        "nivel": 4,
+        "nombre": "Nivel 4 — Alianza Regional / GORE / SERVIU",
+        "publico_objetivo": "Gobiernos Regionales, SERVIU o asociaciones de municipios",
+        "precio_min_clp": 14000000,
+        "precio_max_clp": 28000000,
+        "periodicidad": "Anual vía licitación / convenio",
+        "etiqueta": "hipótesis (sin verificar)",
+        "incluye": [
+          "Cobertura multicomunal homologada con ranking de equidad territorial",
+          "Soporte a cartera regional de inversión en arbolado y refugios climáticos",
+          "Auditoría metodológica semestral y capacitación a equipos locales"
+        ],
+        "horas_soporte": "80 horas/año"
+      },
+      {
+        "nivel": 5,
+        "nombre": "Nivel 5 — Integración Corporativa / RSE Territorial",
+        "publico_objetivo": "Empresas privadas (patrocinio de parques y refugios climáticos)",
+        "precio_min_clp": 6000000,
+        "precio_max_clp": 18000000,
+        "periodicidad": "Por convenio anual (modelo B2B2G)",
+        "etiqueta": "hipótesis (sin verificar)",
+        "incluye": [
+          "Selección transparente de parques vulnerables para cofinanciamiento de sombra/arbolado",
+          "Seguimiento satelital auditado antes y después de la intervención",
+          "Reporte anual público sin afirmaciones no verificables de carbono o salud"
+        ],
+        "horas_soporte": "Según convenio"
+      }
+    ],
+    "escenario_3_anos": {
+      "etiqueta": "hipótesis (sin verificar)",
+      "anio_1": "3 a 5 municipalidades piloto vía Compra Ágil (Nivel 1–3) + validación con 2 postulaciones reales a fondos MINVU/PMU.",
+      "anio_2": "12 a 18 municipalidades activas + 1 convenio regional/asociativo + primeros cofinanciamientos B2B2G.",
+      "anio_3": "25 a 35 municipalidades y 2 a 3 convenios regionales con cartera estable de seguimiento de intervenciones."
+    },
+    "plan_validacion_2_semanas": [
+      "Semana 1: Presentar el prototipo con datos reales a 3 direcciones municipales (SECPLA / Ornato / Medio Ambiente) en Cerro Navia, San Miguel o Quilicura.",
+      "Semana 1: Verificar en terreno al menos 5 de los sitios del Top 5 con fotografía local y cotejo visual frente al recorte Sentinel-2.",
+      "Semana 2: Validar si el formato de informe .docx/.pdf cubre los campos de evidencia requeridos por un formulario real de PMU SUBDERE o FPA MMA.",
+      "Semana 2: Contrastar disposición a pagar bajo modalidad Compra Ágil (< 100 UTM) y ajustar alcance de Nivel 1 y Nivel 2."
+    ],
+    "nota_licencia_clima": "El prototipo usa Open-Meteo (CC BY 4.0, uso no comercial). Para operación comercial en Nivel 2–5 se debe migrar la ingesta climática a licencia comercial de Open-Meteo o red oficial DMC / Meteored."
+  }
+}

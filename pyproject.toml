@@ -1,0 +1,26 @@
+[project]
+name = "pulmon-urbano"
+version = "0.1.0"
+description = "Pulmón Urbano — Diagnóstico satelital (Sentinel-2 NDVI/NDMI) + calidad de aire (SINCA/Open-Meteo) y generación de informes PDF municipales"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.32.0",
+    "httpx>=0.28.0",
+    "pystac-client>=0.8.5",
+    "planetary-computer>=1.0.0",
+    "rasterio>=1.4.2",
+    "numpy>=2.1.0",
+    "shapely>=2.0.6",
+    "pyproj>=3.7.0",
+    "reportlab>=4.2.5",
+    "matplotlib>=3.9.2",
+    "pillow>=11.0.0",
+    "pytest>=8.3.0",
+    "pmtiles>=3.8.1",
+    "mapbox-vector-tile>=2.2.0",
+    "pyyaml>=6.0.4",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
