@@ -51,17 +51,13 @@
   }
 
   const fmt = (n) => new Intl.NumberFormat("es-CL", { maximumFractionDigits: 1 }).format(n);
-  function costo(o) {
-    if (o.costo_min_M === null || o.costo_max_M === null) return "Costo por cotizar con el municipio";
-    return "Entre $" + fmt(o.costo_min_M) + " y $" + fmt(o.costo_max_M) + " millones";
-  }
 
   // ---------- inicio ----------
   async function iniciar() {
     mostrarCargando("Cargando el mapa…");
     try {
       const [cat, ideas, zonas] = await Promise.all([pedir("data/vecino/opciones.json"), pedir("data/vecino/ideas.json"), pedir("api/votacion/zonas")]);
-      ideas.ideas.forEach((o) => { estado.catalogo[o.id] = { ...o, costo_min_M: null, costo_max_M: null, costo_nota: "por cotizar con el municipio (no hay dato verificado)", ejemplos: [] }; });
+      ideas.ideas.forEach((o) => { estado.catalogo[o.id] = o; });
       cat.opciones.forEach((o) => { estado.catalogo[o.id] = o; });
       estado.zonas = zonas.zonas;
     } catch (e) {
@@ -280,14 +276,10 @@
 
     function tarjeta(o, razon, etiqueta) {
       const input = h("input", { type: "radio", name: "opcion", value: o.id, checked: o.id === elegida });
-      const ejemplos = o.ejemplos || [];
-      const caja = h("div", { class: "ejemplos", hidden: true }, ejemplos.map((x) => h("div", {}, h("a", { href: x.url, target: "_blank", rel: "noopener noreferrer" }, x.titulo))));
-      const ver = ejemplos.length ? h("button", { class: "enlace", type: "button", onclick: (ev) => { ev.preventDefault(); caja.hidden = !caja.hidden; } }, "Ver obras parecidas con fuente") : null;
       input.addEventListener("change", () => elegir(o));
-      return h("div", {}, h("label", { class: "opcion" }, input,
+      return h("label", { class: "opcion" }, input,
         h("span", { class: "nombre" }, o.nombre), etiqueta ? h("span", { class: "etiqueta" }, etiqueta) : null,
-        h("span", { class: "razon" }, razon || o.descripcion),
-        h("span", { class: "costo" }, costo(o), " ", h("em", {}, "(" + (o.costo_nota || "") + ")"))), ver, caja);
+        h("span", { class: "razon" }, razon || o.descripcion));
     }
 
     recomendadas.forEach((o) => lista.append(tarjeta(o, o.razon, "Recomendada")));

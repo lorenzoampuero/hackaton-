@@ -501,6 +501,48 @@ def epoca_actual(almacen: Any, comuna_slug: str) -> dict[str, Any]:
     return reales[0]  # la más reciente (cerrada o próxima)
 
 
+def asegurar_periodo_por_id(almacen: Any, periodo_id: str) -> dict[str, Any] | None:
+    """Si una instancia serverless fría aún no sembró el período auto-* o demo-*, lo hidrata."""
+    p = almacen.obtener_periodo(periodo_id)
+    if p is not None:
+        return p
+    comunas = {z["slug"] for z in _zonas()}
+    if periodo_id.startswith("demo-") and demo_automatica():
+        slug = periodo_id[5:]
+        if slug in comunas:
+            asegurar_demo(almacen)
+            p = almacen.obtener_periodo(periodo_id)
+            if p is None:
+                try:
+                    sembrar_demo(almacen, slug, id_fijo=periodo_id)
+                except Exception:
+                    pass
+                p = almacen.obtener_periodo(periodo_id)
+            return p
+    if periodo_id.startswith("auto-") and epocas_automaticas():
+        m = re.fullmatch(r"auto-([a-z0-9_]+)-(\d+)", periodo_id)
+        if m:
+            slug, n = m.group(1), int(m.group(2))
+            if slug in comunas and 1000 <= n <= 5000:
+                abre = datetime.fromtimestamp(n * DIAS_EPOCA_POR_DEFECTO * 86400, tz=timezone.utc)
+                nueva = {
+                    "id": periodo_id,
+                    "comuna_slug": slug,
+                    "nombre": f"Votación del {abre:%d-%m-%Y}",
+                    "abre_en": _iso(abre),
+                    "cierra_en": _iso(abre + timedelta(days=DIAS_EPOCA_POR_DEFECTO)),
+                    "cerrado_manual": False,
+                    "demo": False,
+                    "creado_en": _iso(_ahora()),
+                }
+                try:
+                    almacen.crear_periodo(nueva)
+                except Exception:
+                    pass
+                return almacen.obtener_periodo(periodo_id) or nueva
+    return None
+
+
 def describir_epoca(p: dict[str, Any]) -> dict[str, Any]:
     est = estado_epoca(p)
     segundos = (_parse(p["cierra_en"]) - _ahora()).total_seconds()
@@ -585,7 +627,7 @@ def ideas(q: str = Query(default="", max_length=60), comuna: str | None = None, 
 @router.post("/votar")
 def votar(v: Voto) -> dict[str, Any]:
     alm = obtener_almacen()
-    p = alm.obtener_periodo(v.periodo_id)
+    p = asegurar_periodo_por_id(alm, v.periodo_id)
     if p is None:
         raise HTTPException(status_code=404, detail="Esa votación no existe.")
     if estado_epoca(p) != "abierto":
@@ -639,7 +681,7 @@ def calcular_resultados(votos: list[dict[str, Any]], minimo: int) -> dict[str, A
 @router.get("/resultados")
 def resultados(periodo_id: str) -> dict[str, Any]:
     alm = obtener_almacen()
-    p = alm.obtener_periodo(periodo_id)
+    p = asegurar_periodo_por_id(alm, periodo_id)
     if p is None:
         raise HTTPException(status_code=404, detail="Esa votación no existe.")
     votos = alm.votos_de_periodo(periodo_id)
@@ -673,7 +715,7 @@ def admin_crear_epoca(pedido: PedidoEpoca, x_admin_token: str | None = Header(de
 def admin_cerrar(pedido: PedidoCerrar, x_admin_token: str | None = Header(default=None)) -> dict[str, Any]:
     _exigir_admin(x_admin_token)
     alm = obtener_almacen()
-    p = alm.obtener_periodo(pedido.periodo_id)
+    p = asegurar_periodo_por_id(alm, pedido.periodo_id)
     if p is None:
         raise HTTPException(status_code=404, detail="Esa votación no existe.")
     alm.cerrar_periodo(pedido.periodo_id)

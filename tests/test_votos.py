@@ -231,3 +231,35 @@ def test_resultados_incluyen_confianza_sin_revelar_preferencias(cliente):
     assert r["publicado"] is False and "sitios" not in r
     assert sitio["id"] in r["confianza"] and r["confianza_global"]["n"] == 4
     assert "opcion_id" not in json.dumps(r["confianza"])
+
+
+def test_votar_y_resultados_hidratan_periodo_auto_y_demo_en_instancia_fria(tmp_path, monkeypatch):
+    monkeypatch.setenv("PULMON_VOTOS_BACKEND", "local")
+    monkeypatch.setenv("PULMON_EPOCAS_AUTO", "1")
+    monkeypatch.setenv("PULMON_DEMO_AUTO", "1")
+    monkeypatch.delenv("SUPABASE_URL", raising=False)
+    monkeypatch.delenv("SUPABASE_SECRET_KEY", raising=False)
+    servidor = importlib.import_module("app.servidor")
+    pid_auto = votos.ventana_auto("cerro_navia")["id"]
+    sitio = _un_sitio()
+
+    def cliente_frio(db_name):
+        monkeypatch.setenv("PULMON_VOTOS_DB", str(tmp_path / db_name))
+        votos._cache_almacen.update({"t": 0.0, "obj": None, "clave": None})
+        votos._demo_listo.clear()
+        return TestClient(servidor.app)
+
+    c1 = cliente_frio("fria_1.db")
+    r_res = c1.get("/api/votacion/resultados", params={"periodo_id": pid_auto})
+    assert r_res.status_code == 200 and r_res.json()["epoca"]["id"] == pid_auto
+
+    c2 = cliente_frio("fria_2.db")
+    r_vot = _votar(c2, pid_auto, sitio["id"], "sombra_arboles")
+    assert r_vot.status_code == 200 and r_vot.json()["ok"] is True
+
+    c3 = cliente_frio("fria_3.db")
+    r_demo = c3.get("/api/votacion/resultados", params={"periodo_id": "demo-cerro_navia"})
+    assert r_demo.status_code == 200 and r_demo.json()["publicado"] is True and r_demo.json()["total_votos"] > 100
+
+    r_404 = c3.get("/api/votacion/resultados", params={"periodo_id": "no-existe-123"})
+    assert r_404.status_code == 404 and "Esa votación no existe." in r_404.json()["detail"]
