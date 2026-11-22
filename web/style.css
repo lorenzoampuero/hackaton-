@@ -176,6 +176,28 @@ h1, h2, h3, h4, p {
   display: flex;
   gap: 6px;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.legal-pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--border-strong);
+  background: var(--surface);
+  color: var(--text-2);
+  padding: 6px 13px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  text-decoration: none;
+  white-space: nowrap;
+  min-height: 34px;
+  transition: border-color 0.14s ease, color 0.14s ease, background 0.14s ease;
+}
+.legal-pill:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+  background: var(--primary-soft);
 }
 
 .btn, button {

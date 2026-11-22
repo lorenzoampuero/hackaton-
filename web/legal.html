@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="es-CL">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>RE-VIDA — Política de Privacidad y Términos y Servicios</title>
+  <link rel="icon" type="image/png" href="img/logo-revida-icon.png">
+  <style>
+    :root {
+      --bg: #f1f4f3;
+      --surface: #ffffff;
+      --surface-2: #f6f8f7;
+      --ink: #0f1f18;
+      --ink-2: #3b4b43;
+      --ink-3: #63736b;
+      --hair: #dce4df;
+      --verde: #17603f;
+      --verde-oscuro: #0c3524;
+      --sombra: 0 2px 10px rgba(12, 53, 36, 0.06), 0 10px 30px rgba(12, 53, 36, 0.07);
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--ink);
+      line-height: 1.55;
+      overflow-x: clip;
+    }
+
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      background: rgba(255, 255, 255, 0.94);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid var(--hair);
+      padding: max(10px, env(safe-area-inset-top)) 20px 10px;
+    }
+    .topbar-inner {
+      max-width: 980px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .brand-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .marca {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      text-decoration: none;
+      color: var(--ink);
+      font-weight: 700;
+      font-size: 1rem;
+    }
+    .marca-logo {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: #ffffff;
+      border: 1px solid var(--hair);
+      padding: 2px;
+      object-fit: contain;
+      display: block;
+    }
+    .volver {
+      font-size: 0.86rem;
+      font-weight: 600;
+      color: var(--verde);
+      text-decoration: none;
+      padding: 6px 11px;
+      border-radius: 999px;
+      background: #eef6f1;
+    }
+    .volver:hover { background: #dff0e6; }
+
+    .ovales {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .pill-oval {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 36px;
+      padding: 7px 16px;
+      border-radius: 999px;
+      border: 1px solid #c6d6cd;
+      background: #ffffff;
+      color: var(--ink-2);
+      font-size: 0.85rem;
+      font-weight: 700;
+      text-decoration: none;
+      white-space: nowrap;
+      touch-action: manipulation;
+      transition: background .15s, border-color .15s, color .15s;
+    }
+    .pill-oval:hover {
+      border-color: var(--verde);
+      color: var(--verde);
+    }
+    .pill-oval.activo,
+    .pill-oval[aria-current="page"] {
+      background: var(--verde);
+      border-color: var(--verde);
+      color: #ffffff;
+    }
+
+    .hero {
+      color: #ffffff;
+      padding: 28px 20px 44px;
+      background:
+        radial-gradient(820px 360px at 90% -10%, rgba(120, 230, 180, .26), transparent 60%),
+        linear-gradient(135deg, #0c3524 0%, #17603f 58%, #1b7a6a 100%);
+    }
+    .hero-inner {
+      max-width: 980px;
+      margin: 0 auto;
+    }
+    .eyebrow {
+      margin: 0 0 6px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      opacity: 0.82;
+    }
+    .hero h1 {
+      margin: 0 0 10px;
+      font-size: clamp(1.6rem, 4vw, 2.35rem);
+      line-height: 1.15;
+    }
+    .hero p {
+      margin: 0;
+      max-width: 64ch;
+      opacity: 0.92;
+      font-size: 0.98rem;
+    }
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 14px;
+    }
+    .chip {
+      background: rgba(255, 255, 255, 0.15);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 999px;
+      padding: 4px 12px;
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    main {
+      max-width: 980px;
+      margin: -22px auto 48px;
+      padding: 0 20px;
+      display: grid;
+      gap: 20px;
+    }
+    .doc-card {
+      background: var(--surface);
+      border: 1px solid var(--hair);
+      border-radius: 20px;
+      padding: 26px 26px 22px;
+      box-shadow: var(--sombra);
+      scroll-margin-top: 76px;
+    }
+    .doc-card header {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--hair);
+      margin-bottom: 16px;
+    }
+    .doc-card h2 {
+      margin: 0;
+      font-size: 1.38rem;
+      color: var(--verde-oscuro);
+    }
+    .badge-sec {
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--verde);
+      background: #eaf5ef;
+      border: 1px solid #cae3d4;
+      border-radius: 999px;
+      padding: 4px 11px;
+    }
+    .doc-card h3 {
+      margin: 18px 0 6px;
+      font-size: 1.02rem;
+      color: var(--ink);
+    }
+    .doc-card p, .doc-card li {
+      color: var(--ink-2);
+      font-size: 0.94rem;
+    }
+    .doc-card p { margin: 0 0 10px; }
+    .doc-card ul {
+      margin: 6px 0 12px;
+      padding-left: 20px;
+      display: grid;
+      gap: 6px;
+    }
+    .aviso-box {
+      background: var(--surface-2);
+      border: 1px solid var(--hair);
+      border-left: 4px solid var(--verde);
+      border-radius: 12px;
+      padding: 12px 14px;
+      margin: 12px 0;
+      font-size: 0.9rem;
+      color: var(--ink-2);
+    }
+    .legal-footer {
+      text-align: center;
+      color: var(--ink-3);
+      font-size: 0.86rem;
+      padding: 8px 0 16px;
+      display: grid;
+      gap: 10px;
+    }
+    .footer-links {
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 14px;
+    }
+    .footer-links a {
+      color: var(--verde);
+      font-weight: 600;
+      text-decoration: none;
+      border-bottom: 1px solid rgba(23, 96, 63, 0.35);
+    }
+
+    @media (max-width: 640px) {
+      .topbar { padding: max(10px, env(safe-area-inset-top)) 14px 10px; }
+      .hero { padding: 22px 16px 38px; }
+      main { padding: 0 14px; }
+      .doc-card { padding: 20px 16px 18px; border-radius: 16px; }
+      .pill-oval { padding: 6px 12px; font-size: 0.8rem; }
+    }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: #ffffff; }
+      .hero { background: #ffffff; color: #000000; border-bottom: 2px solid var(--verde); padding: 14px 0; }
+      main { margin-top: 16px; padding: 0; }
+      .doc-card { box-shadow: none; break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar no-print">
+    <div class="topbar-inner">
+      <div class="brand-left">
+        <a class="marca" href="/">
+          <img class="marca-logo" src="img/logo-revida-icon.png" alt="RE-VIDA">
+          <span>RE-VIDA</span>
+        </a>
+        <a class="volver" href="/">Volver al mapa</a>
+      </div>
+      <nav class="ovales" aria-label="Navegación legal">
+        <a id="tabPrivacidad" class="pill-oval" href="#privacidad">Privacidad</a>
+        <a id="tabTerminos" class="pill-oval" href="#terminos">Términos</a>
+      </nav>
+    </div>
+  </header>
+
+  <section class="hero">
+    <div class="hero-inner">
+      <p class="eyebrow">Transparencia y marco legal · Chile</p>
+      <h1>Política de Privacidad y Términos y Servicios</h1>
+      <p>Cómo protegemos tus datos en las votaciones vecinales, el análisis satelital y las herramientas de RE-VIDA conforme a la Ley N.° 19.628 y la Ley N.° 21.719 de Protección de Datos Personales.</p>
+      <div class="chips">
+        <span class="chip">Vigente desde: Noviembre 2026</span>
+        <span class="chip">Ley 21.719 · Minimización de datos</span>
+        <span class="chip">Sin captura de GPS ni RUT</span>
+      </div>
+    </div>
+  </section>
+
+  <main>
+    <section id="privacidad" class="doc-card" aria-labelledby="h-privacidad">
+      <header>
+        <h2 id="h-privacidad">1. Política de Privacidad y Protección de Datos</h2>
+        <span class="badge-sec">Privacidad · Ley 21.719</span>
+      </header>
+
+      <h3>1.1 Responsable y alcance</h3>
+      <p><strong>RE-VIDA — Ciudades que respiran</strong> es una plataforma de priorización de arbolado urbano, análisis satelital y participación ciudadana para comunas de Chile. Esta política rige para la vista vecinal (<code>/</code>), el tablero institucional (<code>/institucion</code>), la vista profesional (<code>/profesional</code>) y el acceso vía QR (<code>/qr</code>).</p>
+
+      <h3>1.2 Minimización y anonimización en la votación vecinal</h3>
+      <ul>
+        <li><strong>Sin datos identificatorios:</strong> No solicitamos nombre, correo electrónico, RUT, número telefónico ni geolocalización GPS del dispositivo para votar por una plaza.</li>
+        <li><strong>Identificador técnico con hash SHA-256:</strong> Para evitar votos duplicados por sitio dentro de un mismo período, el navegador genera un identificador aleatorio local (<code>pu_dispositivo</code>) que se envía al servidor y se almacena únicamente transformado mediante un hash criptográfico SHA-256 irreversible.</li>
+        <li><strong>Datos opcionales y contexto de entrada:</strong> El rango etario (5 tramos agregados) es estrictamente opcional. El parámetro <code>?qr=1</code> únicamente registra de forma estadística cuántos ingresos provienen del código QR físico del parque.</li>
+        <li><strong>Umbral de publicación y votaciones de demostración:</strong> Mientras la votación está abierta solo se muestran conteos totales. Al cierre, los porcentajes por lugar se publican únicamente si el sitio alcanza el mínimo de <strong>10 votos</strong>. Los períodos marcados como <em>DEMOSTRACIÓN</em> contienen votos simulados y se rotulan explícitamente.</li>
+      </ul>
+
+      <h3>1.3 Vista profesional, almacenamiento y Asistente IA</h3>
+      <ul>
+        <li><strong>Cuentas demo, casos y archivos:</strong> En la vista profesional se pueden guardar notas de trabajo, perfiles de prueba, capturas y planes activos (<em>modo demo</em> en Supabase o almacenamiento local). No utilices contraseñas personales ni cargues antecedentes confidenciales de terceros.</li>
+        <li><strong>Consultas al Asistente IA:</strong> Las preguntas escritas y las imágenes adjuntadas voluntariamente en el chat IA se envían desde nuestro servidor al proveedor de modelo configurado (sin exponer llaves de API al navegador) con el único fin de redactar el análisis territorial. Evita incluir rostros, patentes u otros datos personales en las fotografías.</li>
+      </ul>
+
+      <h3>1.4 Fuentes territoriales y demográficas públicas</h3>
+      <p>Las métricas territoriales provienen de fuentes oficiales y abiertas agregadas a escala de plaza o entorno de 400 m (sin identificar hogares ni personas): INE Censo 2024 agregado, Copernicus Sentinel-2 y CAMS, NASA/USGS Landsat 8/9, ESA WorldCover, Esri World Imagery y reanálisis climático Open-Meteo ERA5.</p>
+
+      <h3>1.5 Derechos de las personas titulares (ARCO+)</h3>
+      <p>De acuerdo con la Ley N.° 21.719, puedes solicitar acceso, rectificación, supresión, oposición o portabilidad de los antecedentes asociados a una cuenta de evaluación profesional mediante los canales del equipo administrador del proyecto. En cualquier momento puedes borrar los identificadores locales de tu navegador eliminando el almacenamiento del sitio.</p>
+    </section>
+
+    <section id="terminos" class="doc-card" aria-labelledby="h-terminos">
+      <header>
+        <h2 id="h-terminos">2. Términos y Servicios de Uso</h2>
+        <span class="badge-sec">Términos · Uso referencial</span>
+      </header>
+
+      <h3>2.1 Objeto del servicio</h3>
+      <p>Al navegar o utilizar RE-VIDA aceptas estos términos. La plataforma ofrece indicadores ambientales, resultados de consulta vecinal y apoyo documental preliminar para equipos municipales, consultoras, organizaciones comunitarias y vecinos.</p>
+
+      <div class="aviso-box">
+        <strong>Carácter orientativo y técnico:</strong> Los análisis satelitales (sombra, vigor vegetal, temperatura superficial y humedad foliar) son indicadores de apoyo y <strong>no reemplazan</strong> la inspección presencial, topográfica ni agronómica antes de licitar o ejecutar obras.
+      </div>
+
+      <h3>2.2 Montos referenciales, mantención y planes</h3>
+      <ul>
+        <li><strong>Rangos de inversión y mantención:</strong> Las cifras en pesos chilenos (incluyendo mantención estimada entre <code>$1.625</code> y <code>$2.962</code> por m² al año y montos referenciales de obras) corresponden a <strong>hipótesis sin verificar</strong> o referencias históricas de proyectos similares. No constituyen presupuesto oficial ni oferta comercial vinculante.</li>
+        <li><strong>Fondos concursables:</strong> La sugerencia de programas públicos (como MINVU, SUBDERE o FPA — MMA) es meramente orientativa; siempre debes verificar las bases vigentes de cada organismo.</li>
+        <li><strong>Planes de demostración:</strong> Los planes mostrados en <em>Planes y Viabilidad</em> operan como simulación funcional de capacidades sin procesamiento real de tarjetas ni cobros monetarios automáticos.</li>
+      </ul>
+
+      <h3>2.3 Uso responsable e integridad de las votaciones</h3>
+      <p>Queda prohibido automatizar envíos masivos, intentar manipular votaciones vecinales, eludir límites de frecuencia o realizar pruebas de carga no autorizadas. El tablero institucional calcula un índice de confianza y alerta automáticamente patrones anómalos (como ráfagas de votos concentrados en una misma hora).</p>
+
+      <h3>2.4 Propiedad intelectual y fuentes de terceros</h3>
+      <p>El diseño de la interfaz, el nombre y emblema <strong>RE-VIDA</strong> y los informes generados se acompañan de datos abiertos sujetos a las atribuciones de OpenStreetMap, Copernicus/ESA, NASA/USGS, Esri, Open-Meteo e INE Chile.</p>
+
+      <h3>2.5 Disponibilidad y modificaciones</h3>
+      <p>Podemos actualizar las capas de datos, criterios metodológicos, coberturas comunales y textos de esta página cuando sea necesario para mejorar la precisión técnica y el cumplimiento normativo. Si utilizas RE-VIDA en procesos institucionales formales, valida siempre los archivos exportados contra tu registro en terreno.</p>
+    </section>
+
+    <footer class="legal-footer no-print">
+      <div>RE-VIDA — Ciudades que respiran · Transparencia territorial</div>
+      <div class="footer-links">
+        <a href="/">Vista del vecino</a>
+        <a href="/institucion">Tablero institucional</a>
+        <a href="/profesional">Vista profesional</a>
+        <a href="/qr">Código QR</a>
+        <a href="javascript:window.print()">Imprimir esta página</a>
+      </div>
+    </footer>
+  </main>
+
+  <script>
+    (function () {
+      const tabP = document.getElementById("tabPrivacidad");
+      const tabT = document.getElementById("tabTerminos");
+      function sincronizar(ir) {
+        const esTerminos = location.hash === "#terminos" || location.pathname.replace(/\/+$/, "").endsWith("/terminos");
+        tabP.classList.toggle("activo", !esTerminos);
+        tabT.classList.toggle("activo", esTerminos);
+        tabP.setAttribute("aria-current", esTerminos ? "false" : "page");
+        tabT.setAttribute("aria-current", esTerminos ? "page" : "false");
+        if (ir) {
+          const destino = document.getElementById(esTerminos ? "terminos" : "privacidad");
+          if (destino) destino.scrollIntoView({ behavior: "smooth" });
+        }
+      }
+      window.addEventListener("hashchange", function () { sincronizar(false); });
+      sincronizar(location.pathname.replace(/\/+$/, "").endsWith("/terminos") && !location.hash);
+    })();
+  </script>
+</body>
+</html>

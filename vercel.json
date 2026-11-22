@@ -32,6 +32,10 @@
       "dest": "/web/qr.html"
     },
     {
+      "src": "^/(legal|privacidad|terminos)/?$",
+      "dest": "/web/legal.html"
+    },
+    {
       "src": "/(.*)",
       "dest": "/web/$1"
     }
