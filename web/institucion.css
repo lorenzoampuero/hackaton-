@@ -175,7 +175,27 @@ table { width: 100%; border-collapse: collapse; font-size: 14px; }
 @keyframes sube { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .tile, .card, .detalle .caja { animation: none; } html { scroll-behavior: auto; } }
 @media (max-width: 980px) { .c-6, .c-7, .c-5 { grid-column: span 12; } .cols { grid-template-columns: 1fr; } .hero-cifra { text-align: left; } .acciones { margin-left: 0; } }
-@media (max-width: 560px) { .hero { padding: 14px 16px 30px; } main { padding: 0 14px 30px; } }
+@media (max-width: 640px) {
+  body { overflow-x: clip; }
+  .hero { padding: 14px 16px 30px; }
+  main { padding: 0 14px 30px; }
+  .hero-top { flex-wrap: wrap; gap: 10px; margin-bottom: 18px; }
+  .hero-links { gap: 10px; font-size: 13px; }
+  .filtros { flex-direction: column; align-items: stretch; gap: 10px; }
+  .filtros label { width: 100%; }
+  select, input[type="text"], input[type="password"], input[type="number"] {
+    width: 100%;
+    min-width: 0;
+    font-size: 16px;
+    min-height: 44px;
+  }
+  .acciones { width: 100%; display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+  .btn { min-height: 44px; text-align: center; }
+  #mapa { height: 270px; }
+  .tabla-caja { -webkit-overflow-scrolling: touch; }
+  #tabla th, #tabla td { padding: 10px 10px; font-size: 13px; }
+  .toast { left: 14px; right: 14px; bottom: max(14px, env(safe-area-inset-bottom)); text-align: center; }
+}
 @media print {
   :root { color-scheme: light; --bg: #fff; --surface: #fff; --surface-2: #f6f6f6; --ink: #000; --ink-2: #333; --ink-3: #555; --hair: #ddd; --hair-2: #ccc; --serie-1: #2a78d6; --tile-filtro: none; }
   .no-print { display: none !important; } .hero { color: #000; background: #fff; border-bottom: 2px solid #1f7a4d; }

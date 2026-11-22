@@ -73,7 +73,25 @@
     const inicial = estado.zonas.find((z) => z.slug === params.get("zona")) || estado.zonas[0];
     await elegirZona(inicial.slug);
     if (params.get("sitio")) elegirSitio(params.get("sitio"));
-    document.getElementById("panel-asa").addEventListener("click", () => document.getElementById("panel").classList.toggle("baja"));
+    const panel = document.getElementById("panel");
+    const asa = document.getElementById("panel-asa");
+    let toqueY = null;
+    let arrastro = false;
+    asa.addEventListener("touchstart", (ev) => {
+      toqueY = ev.touches[0].clientY;
+      arrastro = false;
+    }, { passive: true });
+    asa.addEventListener("touchend", (ev) => {
+      if (toqueY === null) return;
+      const dy = ev.changedTouches[0].clientY - toqueY;
+      toqueY = null;
+      if (dy > 32) { panel.classList.add("baja"); arrastro = true; }
+      else if (dy < -32) { panel.classList.remove("baja"); arrastro = true; }
+    });
+    asa.addEventListener("click", () => {
+      if (arrastro) { arrastro = false; return; }
+      panel.classList.toggle("baja");
+    });
     window.addEventListener("resize", ajustarVista);
   }
 
@@ -121,7 +139,12 @@
     const b = estado.datos && estado.datos.comuna.bbox;
     if (b && !estado.sel) {
       const grande = window.innerWidth > 760;  // en pantallas grandes el panel tapa la izquierda; en celular, abajo
-      estado.mapa.fitBounds([[b[1], b[0]], [b[3], b[2]]], { paddingTopLeft: [grande ? 400 : 20, 70], paddingBottomRight: [20, grande ? 30 : Math.round(window.innerHeight * 0.55)] });
+      estado.mapa.fitBounds(
+        [[b[1], b[0]], [b[3], b[2]]],
+        grande
+          ? { paddingTopLeft: [400, 70], paddingBottomRight: [20, 30] }
+          : { paddingTopLeft: [16, 118], paddingBottomRight: [16, Math.round(window.innerHeight * 0.38)] }
+      );
     }
   }
 
@@ -129,8 +152,11 @@
     estado.marcadores.forEach((m) => estado.mapa.removeLayer(m));
     estado.marcadores.clear();
     quitarResaltado();
+    const esMovil = window.innerWidth <= 760;
     for (const s of estado.datos.sitios) {
-      const radio = s.area_m2 >= 20000 ? 13 : s.area_m2 >= 3000 ? 9 : 6.5;
+      const radio = esMovil
+        ? (s.area_m2 >= 20000 ? 15 : s.area_m2 >= 3000 ? 11.5 : 9.5)
+        : (s.area_m2 >= 20000 ? 13 : s.area_m2 >= 3000 ? 9 : 6.5);
       const yaVote = estado.mis.has(s.id);
       const m = L.circleMarker([s.centro[1], s.centro[0]], { radius: radio, color: yaVote ? "#1f2a30" : "#ffffff", weight: yaVote ? 3 : 2, fillColor: COLORES[s.semaforo.color], fillOpacity: 0.92 });
       m.on("click", (ev) => { L.DomEvent.stopPropagation(ev); elegirSitio(s.id); });
@@ -150,7 +176,17 @@
     estado.sel = s;
     quitarResaltado();
     estado.resaltado = L.geoJSON({ type: "Feature", geometry: s.geometria }, { style: { color: "#1f2a30", weight: 3, fillColor: COLORES[s.semaforo.color], fillOpacity: 0.35 } }).addTo(estado.mapa);
-    estado.mapa.flyTo([s.centro[1], s.centro[0]], Math.max(estado.mapa.getZoom(), 16), { duration: 0.6 });
+    if (window.innerWidth <= 760) {
+      estado.mapa.fitBounds(estado.resaltado.getBounds(), {
+        paddingTopLeft: [24, 122],
+        paddingBottomRight: [24, Math.round(window.innerHeight * 0.66)],
+        maxZoom: 16,
+        animate: true,
+        duration: 0.6,
+      });
+    } else {
+      estado.mapa.flyTo([s.centro[1], s.centro[0]], Math.max(estado.mapa.getZoom(), 16), { duration: 0.6 });
+    }
     document.getElementById("panel").classList.remove("baja");
     pintarPanel();
   }
@@ -172,6 +208,8 @@
 
   function pintarPanel() {
     const raiz = contenedor();
+    const panelEl = document.getElementById("panel");
+    if (panelEl) panelEl.classList.toggle("inicio", !estado.sel);
     const nodos = [];
     if (estado.epoca && estado.epoca.demo) nodos.push(h("div", { class: "demo" }, "DEMOSTRACIÓN: estos votos son simulados."));
     if (!estado.sel) {

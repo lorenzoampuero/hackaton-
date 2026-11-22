@@ -52,6 +52,11 @@ def entrada_institucion() -> FileResponse:
 def entrada_profesional() -> FileResponse:
     return FileResponse(RAIZ / "web" / "index.html")
 
+
+@app.get("/qr", include_in_schema=False)
+def entrada_qr() -> FileResponse:
+    return FileResponse(RAIZ / "web" / "qr.html")
+
 _llamadas: deque[float] = deque()
 _candado = threading.Lock()
 _lock_db = threading.Lock()

@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="es-CL">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>RE-VIDA — Código QR</title>
+  <link rel="icon" type="image/png" href="img/logo-revida-icon.png">
+  <style>
+    :root {
+      --verde: #17603f;
+      --verde-oscuro: #0c3524;
+      --fondo: #f1f4f3;
+      --tinta: #13221c;
+      --suave: #4a5d54;
+      --borde: #d9e4de;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      min-height: 100%;
+      background: var(--fondo);
+      color: var(--tinta);
+    }
+    body {
+      display: grid;
+      place-items: center;
+      padding: max(18px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+    }
+    .ficha {
+      width: 100%;
+      max-width: 520px;
+      background: #ffffff;
+      border: 1px solid var(--borde);
+      border-top: 8px solid var(--verde);
+      border-radius: 22px;
+      padding: 28px 24px 24px;
+      box-shadow: 0 12px 34px rgba(12, 53, 36, 0.1);
+      text-align: center;
+    }
+    .logo-completo {
+      width: min(210px, 62%);
+      height: auto;
+      display: block;
+      margin: 0 auto 16px;
+    }
+    h1 {
+      margin: 0 0 6px;
+      font-size: clamp(1.35rem, 4.8vw, 1.75rem);
+      color: var(--verde-oscuro);
+      line-height: 1.15;
+    }
+    .bajada {
+      margin: 0 auto 18px;
+      color: var(--suave);
+      font-size: 0.96rem;
+      max-width: 34ch;
+      line-height: 1.4;
+    }
+    .qr-marco {
+      display: inline-block;
+      padding: 14px;
+      background: #f6faf8;
+      border: 2px solid #d4e6dc;
+      border-radius: 20px;
+      margin-bottom: 14px;
+    }
+    .qr-marco img {
+      display: block;
+      width: min(290px, 70vw);
+      height: auto;
+      border-radius: 10px;
+      background: #ffffff;
+    }
+    .url-caja {
+      display: inline-block;
+      margin: 4px auto 20px;
+      padding: 7px 12px;
+      border-radius: 999px;
+      background: #eef6f1;
+      color: var(--verde);
+      font-size: 0.86rem;
+      font-weight: 700;
+      text-decoration: none;
+      word-break: break-all;
+    }
+    .acciones {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 10px;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 46px;
+      padding: 10px 14px;
+      border-radius: 12px;
+      font: inherit;
+      font-size: 0.92rem;
+      font-weight: 700;
+      text-decoration: none;
+      cursor: pointer;
+      border: 1px solid var(--borde);
+      background: #f7faf8;
+      color: var(--tinta);
+      touch-action: manipulation;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn.primario {
+      grid-column: 1 / -1;
+      background: var(--verde);
+      border-color: var(--verde);
+      color: #ffffff;
+      font-size: 0.98rem;
+    }
+    .pie-links {
+      margin-top: 16px;
+      font-size: 0.86rem;
+      color: var(--suave);
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .pie-links a {
+      color: var(--verde);
+      font-weight: 600;
+      text-decoration: none;
+      border-bottom: 1px solid rgba(23, 96, 63, 0.35);
+    }
+    @media (max-width: 440px) {
+      .ficha { padding: 22px 16px 20px; border-radius: 18px; }
+      .acciones { grid-template-columns: 1fr; }
+    }
+    @media print {
+      body { background: #ffffff; padding: 0; }
+      .ficha { box-shadow: none; border: 0; border-top: 8px solid var(--verde); max-width: 640px; }
+      .no-print { display: none !important; }
+      .qr-marco img { width: 340px; }
+    }
+  </style>
+</head>
+<body>
+  <main class="ficha">
+    <img class="logo-completo" src="img/logo-revida.png" alt="RE-VIDA — Ciudades que respiran">
+    <h1>Escanea y vota por tu plaza</h1>
+    <p class="bajada">Abre el mapa en tu celular y elige qué necesita primero tu parque o barrio. Tu voto se cruza con datos satelitales reales.</p>
+    <div class="qr-marco">
+      <img src="img/qr-revida.png" alt="Código QR para abrir RE-VIDA en el celular">
+    </div>
+    <div>
+      <a class="url-caja" href="/?qr=1">hackaton-eight-eosin.vercel.app/?qr=1</a>
+    </div>
+    <div class="acciones no-print">
+      <a class="btn primario" href="/?qr=1">Abrir app móvil</a>
+      <a class="btn" href="img/qr-revida.png" download="qr-revida.png">Descargar QR (PNG)</a>
+      <a class="btn" href="img/qr-revida-afiche.png" download="afiche-revida-qr.png">Descargar afiche (PNG)</a>
+      <button class="btn" type="button" onclick="window.print()">Imprimir afiche</button>
+      <a class="btn" href="institucion.html">Tablero institucional</a>
+    </div>
+    <nav class="pie-links no-print" aria-label="Otras vistas">
+      <a href="/?qr=1">Vista del vecino</a>
+      <a href="/profesional">Vista profesional</a>
+    </nav>
+  </main>
+</body>
+</html>
