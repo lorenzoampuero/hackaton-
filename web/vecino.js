@@ -256,21 +256,31 @@
 
     let temporizador = null, secuencia = 0;
     async function buscar(q) {
+      const texto = q.trim();
       const mia = ++secuencia;
+      if (!texto) {
+        cajaBusqueda.replaceChildren();
+        return;
+      }
+      if (texto.length < 2) {
+        cajaBusqueda.replaceChildren(h("p", { class: "sub" }, "Escribe al menos 2 letras para buscar."));
+        return;
+      }
       cajaBusqueda.replaceChildren(h("p", { class: "sub" }, "Buscando…"));
       try {
-        const r = await pedir("api/votacion/ideas?q=" + encodeURIComponent(q) + "&comuna=" + encodeURIComponent(estado.zona.slug) + "&site_id=" + encodeURIComponent(s.id));
+        const r = await pedir("api/votacion/ideas?q=" + encodeURIComponent(texto) + "&comuna=" + encodeURIComponent(estado.zona.slug) + "&site_id=" + encodeURIComponent(s.id));
         if (mia !== secuencia) return;
-        const titulo = !q.trim() ? "Ideas populares"
-          : r.coincidencias > 0 ? r.coincidencias + (r.coincidencias === 1 ? " resultado" : " resultados") + " para «" + q.trim() + "»" + (r.relleno ? " y otras ideas populares" : "")
-          : "No encontramos «" + q.trim() + "». Mira estas ideas populares:";
-        cajaBusqueda.replaceChildren(h("p", { class: "sub" }, titulo), ...r.resultados.map((o) => tarjeta(o, o.descripcion, o.recomendada ? "Recomendada para este lugar" : o.popular ? "Popular" : null)));
+        if (r.coincidencias > 0) {
+          const titulo = r.coincidencias + (r.coincidencias === 1 ? " resultado" : " resultados") + " para «" + texto + "»";
+          cajaBusqueda.replaceChildren(h("p", { class: "sub" }, titulo), ...r.resultados.map((o) => tarjeta(o, o.descripcion, o.recomendada ? "Recomendada para este lugar" : null)));
+        } else {
+          cajaBusqueda.replaceChildren(h("p", { class: "sub" }, "No encontramos ideas parecidas a «" + texto + "». Prueba con otra palabra."));
+        }
       } catch (e) {
         if (mia === secuencia) cajaBusqueda.replaceChildren(h("p", { class: "error" }, "No pudimos buscar ahora: " + e.message));
       }
     }
     entrada.addEventListener("input", () => { clearTimeout(temporizador); temporizador = setTimeout(() => buscar(entrada.value), 250); });
-    buscar("");
 
     boton.addEventListener("click", async () => {
       error.hidden = true;

@@ -168,17 +168,28 @@ def test_modo_vercel_ids_deterministicos_y_demo_automatica(tmp_path, monkeypatch
     assert resultados[0] == resultados[1]
 
 
-def test_buscador_encuentra_por_nombre_y_sinonimo_y_completa_con_populares(cliente):
+def test_buscador_devuelve_solo_coincidencias_sin_populares(cliente):
     r = cliente.get("/api/votacion/ideas", params={"q": "perros"}).json()
-    assert r["resultados"][0]["id"] == "parque_perros" and r["coincidencias"] >= 1
-    assert r["relleno"] is True and len(r["resultados"]) >= 6  # pocas coincidencias: se completa con populares
-    assert any(x["popular"] for x in r["resultados"])
+    assert r["resultados"][0]["id"] == "parque_perros"
+    assert r["coincidencias"] == len(r["resultados"]) >= 1
+    assert r["relleno"] is False
+    assert not any(x["popular"] for x in r["resultados"])
+
     futbol = cliente.get("/api/votacion/ideas", params={"q": "fútbol"}).json()  # con tilde y sinónimo
     assert futbol["resultados"][0]["id"] == "cancha_comunitaria"
+    assert futbol["relleno"] is False
+
+    parecido = cliente.get("/api/votacion/ideas", params={"q": "pisina"}).json()  # parecido con error de tipeo
+    assert any(x["id"] == "piscina" for x in parecido["resultados"])
+
     vacio = cliente.get("/api/votacion/ideas", params={"q": ""}).json()
-    assert len(vacio["resultados"]) >= 6 and all(x["popular"] for x in vacio["resultados"])
+    assert vacio["coincidencias"] == 0 and vacio["relleno"] is False and vacio["resultados"] == []
+
+    corto = cliente.get("/api/votacion/ideas", params={"q": "a"}).json()
+    assert corto["coincidencias"] == 0 and corto["relleno"] is False and corto["resultados"] == []
+
     sin_nada = cliente.get("/api/votacion/ideas", params={"q": "zzzzqqq"}).json()
-    assert sin_nada["coincidencias"] == 0 and len(sin_nada["resultados"]) >= 6
+    assert sin_nada["coincidencias"] == 0 and sin_nada["relleno"] is False and sin_nada["resultados"] == []
 
 
 def test_se_puede_votar_por_una_idea_del_buscador_y_el_costo_no_se_inventa(cliente):

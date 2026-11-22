@@ -11,6 +11,7 @@ Reglas de diseño:
 
 from __future__ import annotations
 
+import difflib
 import hashlib
 import hmac
 import os
@@ -168,23 +169,31 @@ def _indice_busqueda() -> list[dict[str, Any]]:
 
 
 def buscar_ideas(q: str, recomendadas: set[str] | None = None, limite: int = 8) -> dict[str, Any]:
-    """Busca por nombre, descripción y palabras parecidas. Si hay pocas coincidencias, completa con ideas populares."""
+    """Busca por nombre, descripción, sinónimos y palabras parecidas, sin rellenar con populares."""
     recomendadas = recomendadas or set()
     frase = normalizar(q)
-    fichas = _indice_busqueda()
-    por_id = {f["id"]: f for f in fichas}
+    if len(frase) < 2:
+        return {"q": q, "coincidencias": 0, "relleno": False, "resultados": []}
     tokens = [x for x in frase.split(" ") if len(x) >= 2]
+    if not tokens:
+        return {"q": q, "coincidencias": 0, "relleno": False, "resultados": []}
+    fichas = _indice_busqueda()
     puntuadas = []
     for f in fichas:
         nom, desc = normalizar(f["nombre"]), normalizar(f["descripcion"])
         palabras = [normalizar(p) for p in f.get("palabras", [])]
+        vocab = [w for w in re.findall(r"[a-z0-9]+", nom) if len(w) >= 4] + [
+            w for p in palabras for w in p.split(" ") if len(w) >= 4
+        ]
         pts = 0
-        if frase and frase in nom:
+        if frase in nom:
             pts += 6
         for tk in tokens:
             if tk in nom:
                 pts += 3
-            if any(tk in p or p in tk for p in palabras if len(p) >= 3):
+            if any(tk == p or (len(p) >= 3 and (tk in p or p in tk)) for p in palabras):
+                pts += 2
+            elif len(tk) >= 4 and any(difflib.SequenceMatcher(None, tk, w).ratio() >= 0.78 for w in vocab):
                 pts += 2
             if tk in desc:
                 pts += 1
@@ -194,16 +203,7 @@ def buscar_ideas(q: str, recomendadas: set[str] | None = None, limite: int = 8) 
             puntuadas.append((pts, f))
     puntuadas.sort(key=lambda x: (-x[0], x[1]["nombre"]))
     resultados = [{**f, "popular": False, "recomendada": f["id"] in recomendadas} for _p, f in puntuadas][:limite]
-    coincidencias = len(resultados)
-    relleno = False
-    if coincidencias < 6:
-        relleno = True
-        vistos = {r["id"] for r in resultados}
-        for pid in _ideas_extra()["populares"]:
-            if pid in por_id and pid not in vistos and len(resultados) < max(6, min(limite, 8)):
-                resultados.append({**por_id[pid], "popular": True, "recomendada": pid in recomendadas})
-                vistos.add(pid)
-    return {"q": q, "coincidencias": coincidencias, "relleno": relleno, "resultados": resultados[:limite]}
+    return {"q": q, "coincidencias": len(resultados), "relleno": False, "resultados": resultados}
 
 
 def calcular_participacion(votos: list[dict[str, Any]]) -> dict[str, Any]:
