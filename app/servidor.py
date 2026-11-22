@@ -33,6 +33,25 @@ from app.votos import router as router_votos  # noqa: E402  (votación vecinal: 
 
 app.include_router(router_votos)
 
+# Entradas de la web (en Vercel lo mismo lo hace vercel.json): el vecino entra a su vista; la institución y
+# el modo profesional tienen su propia ruta.
+from fastapi.responses import FileResponse, RedirectResponse  # noqa: E402
+
+
+@app.get("/", include_in_schema=False)
+def entrada_vecino() -> RedirectResponse:
+    return RedirectResponse("/vecino.html")
+
+
+@app.get("/institucion", include_in_schema=False)
+def entrada_institucion() -> FileResponse:
+    return FileResponse(RAIZ / "web" / "institucion.html")
+
+
+@app.get("/profesional", include_in_schema=False)
+def entrada_profesional() -> FileResponse:
+    return FileResponse(RAIZ / "web" / "index.html")
+
 _llamadas: deque[float] = deque()
 _candado = threading.Lock()
 _lock_db = threading.Lock()

@@ -16,6 +16,18 @@
       "dest": "api/index.py"
     },
     {
+      "src": "^/$",
+      "dest": "/web/vecino.html"
+    },
+    {
+      "src": "^/institucion/?$",
+      "dest": "/web/institucion.html"
+    },
+    {
+      "src": "^/profesional/?$",
+      "dest": "/web/index.html"
+    },
+    {
       "src": "/(.*)",
       "dest": "/web/$1"
     }
