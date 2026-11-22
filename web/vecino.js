@@ -276,12 +276,12 @@
 
     function tarjeta(o, razon, etiqueta) {
       const input = h("input", { type: "radio", name: "opcion", value: o.id, checked: o.id === elegida });
-      const ejemplos = o.ejemplos || [];
-      const caja = h("div", { class: "ejemplos", hidden: true },
-        ejemplos.map((x) => h("a", { href: x.url, target: "_blank", rel: "noopener noreferrer" },
-          h("span", {}, x.titulo_vecino || x.titulo.replace(/:.*$/, "")),
-          h("span", { "aria-hidden": "true" }, "↗"))));
-      const ver = ejemplos.length ? h("button", { class: "btn-fuentes", type: "button", "aria-expanded": "false" }, "Consultar fuentes ▾") : null;
+      const mejor = (o.ejemplos || [])[0] || null;
+      const caja = mejor ? h("div", { class: "ejemplos", hidden: true },
+        h("a", { href: mejor.url, target: "_blank", rel: "noopener noreferrer" },
+          h("span", {}, mejor.titulo_vecino || mejor.titulo.replace(/:.*$/, "")),
+          h("span", { "aria-hidden": "true" }, "↗"))) : null;
+      const ver = mejor ? h("button", { class: "btn-fuentes", type: "button", "aria-expanded": "false" }, "Consultar fuente ▾") : null;
       if (ver) {
         ver.addEventListener("click", (ev) => {
           ev.preventDefault();
@@ -289,7 +289,7 @@
           const abierta = caja.hidden;
           caja.hidden = !abierta;
           ver.setAttribute("aria-expanded", String(abierta));
-          ver.textContent = abierta ? "Consultar fuentes ▴" : "Consultar fuentes ▾";
+          ver.textContent = abierta ? "Ocultar fuente ▴" : "Consultar fuente ▾";
         });
       }
       input.addEventListener("change", () => elegir(o));

@@ -47,16 +47,16 @@
       "min_area_m2": 0,
       "ejemplos": [
         {
-          "titulo": "Área Verde Los Aromos, Olivar (sombreadero y jardineras con escaños, Subdere / Royalty Minero): $42 M",
-          "titulo_vecino": "Área Verde Los Aromos en Olivar con sombreadero y escaños (Subdere)",
-          "costo_M": 42,
-          "url": "https://www.subdere.gov.cl/sala-de-prensa/con-recursos-del-royalty-minero-la-comuna-de-olivar-transforma-un-terreno-abandonado"
-        },
-        {
           "titulo": "Plaza Obispo Pérez, Providencia (290 m², bebedero inclusivo de tres alturas y mobiliario, Subdere / BID): $60 M",
           "titulo_vecino": "Plaza Obispo Pérez en Providencia con bebedero inclusivo de tres alturas (Subdere)",
           "costo_M": 60,
           "url": "https://www.subdere.gov.cl/sala-de-prensa/remodelan-tradicional-plaza-del-barrio-vaticano-chico-de-providencia"
+        },
+        {
+          "titulo": "Área Verde Los Aromos, Olivar (sombreadero y jardineras con escaños, Subdere / Royalty Minero): $42 M",
+          "titulo_vecino": "Área Verde Los Aromos en Olivar con sombreadero y escaños (Subdere)",
+          "costo_M": 42,
+          "url": "https://www.subdere.gov.cl/sala-de-prensa/con-recursos-del-royalty-minero-la-comuna-de-olivar-transforma-un-terreno-abandonado"
         },
         {
           "titulo": "Plaza Las Vertientes, Coquimbo (434 m² con escaños, asientos y sombreaderos, Subdere PMU): $60 M",
@@ -220,16 +220,16 @@
       "min_area_m2": 0,
       "ejemplos": [
         {
-          "titulo": "Programa «Plantemos Futuro», Las Condes (reconversión de >1.000 antejardines a bajo consumo hídrico): $100 M",
-          "titulo_vecino": "Programa «Plantemos Futuro» en Las Condes: cambio de pasto por plantas de poco riego",
-          "costo_M": 100,
-          "url": "https://www.lascondes.cl/las-condes-inicia-el-cambio-de-mas-de-1-000-antejardines-de-pasto-por-especies-de-bajo-consumo-hidrico/"
-        },
-        {
           "titulo": "Remodelación Plaza Enrique Bunster, Ñuñoa (especies de bajo consumo hídrico y riego tecnificado, Subdere PMU): $129,7 M",
           "titulo_vecino": "Remodelación Plaza Enrique Bunster en Ñuñoa con plantas de bajo consumo hídrico (Subdere)",
           "costo_M": 129.7,
           "url": "https://www.nunoa.cl/ya-comenzaron-los-trabajos-de-la-plaza-enrique-bunster/"
+        },
+        {
+          "titulo": "Programa «Plantemos Futuro», Las Condes (reconversión de >1.000 antejardines a bajo consumo hídrico): $100 M",
+          "titulo_vecino": "Programa «Plantemos Futuro» en Las Condes: cambio de pasto por plantas de poco riego",
+          "costo_M": 100,
+          "url": "https://www.lascondes.cl/las-condes-inicia-el-cambio-de-mas-de-1-000-antejardines-de-pasto-por-especies-de-bajo-consumo-hidrico/"
         },
         {
           "titulo": "Parque Metropolitano de Santiago retira 53.000 m² de pasto para ahorrar agua",
@@ -249,6 +249,12 @@
       "min_area_m2": 0,
       "ejemplos": [
         {
+          "titulo": "Plaza Enrique Bunster, Ñuñoa (riego tecnificado y paisajismo sustentable, Subdere PMU): $129,7 M",
+          "titulo_vecino": "Plaza Enrique Bunster en Ñuñoa con riego tecnificado (Subdere)",
+          "costo_M": 129.7,
+          "url": "https://www.nunoa.cl/ya-comenzaron-los-trabajos-de-la-plaza-enrique-bunster/"
+        },
+        {
           "titulo": "Área Verde Los Aromos, Olivar (sistema de riego y paisajismo, Subdere): $42 M",
           "titulo_vecino": "Área Verde Los Aromos en Olivar con nuevo sistema de riego (Subdere)",
           "costo_M": 42,
@@ -259,12 +265,6 @@
           "titulo_vecino": "Plaza Obispo Pérez en Providencia con renovación de riego (Subdere)",
           "costo_M": 60,
           "url": "https://www.subdere.gov.cl/sala-de-prensa/remodelan-tradicional-plaza-del-barrio-vaticano-chico-de-providencia"
-        },
-        {
-          "titulo": "Plaza Enrique Bunster, Ñuñoa (riego tecnificado y paisajismo sustentable, Subdere PMU): $129,7 M",
-          "titulo_vecino": "Plaza Enrique Bunster en Ñuñoa con riego tecnificado (Subdere)",
-          "costo_M": 129.7,
-          "url": "https://www.nunoa.cl/ya-comenzaron-los-trabajos-de-la-plaza-enrique-bunster/"
         }
       ]
     },
@@ -278,6 +278,12 @@
       "min_area_m2": 0,
       "ejemplos": [
         {
+          "titulo": "Programa Brotar, GORE Santiago (bosques de bolsillo como refugios climáticos, ≈ $60,5 M por sitio)",
+          "titulo_vecino": "Programa Brotar: bosques de bolsillo como refugios climáticos en la RM (GORE Santiago)",
+          "costo_M": 60.5,
+          "url": "https://www.gobiernosantiago.cl/2024/04/04/gobierno-de-santiago-y-cultiva-inauguran-bosque-de-bolsillo-de-crecimiento-acelerado-con-innovadora-tecnica-para-hacer-frente-al-calor-extremo/"
+        },
+        {
           "titulo": "Área Verde Los Aromos, Olivar (sombreadero y zona de descanso, Subdere): $42 M",
           "titulo_vecino": "Área Verde Los Aromos en Olivar con sombreadero y descanso (Subdere)",
           "costo_M": 42,
@@ -288,12 +294,6 @@
           "titulo_vecino": "Plaza Obispo Pérez en Providencia con bebedero inclusivo y áreas verdes (Subdere)",
           "costo_M": 60,
           "url": "https://www.subdere.gov.cl/sala-de-prensa/remodelan-tradicional-plaza-del-barrio-vaticano-chico-de-providencia"
-        },
-        {
-          "titulo": "Programa Brotar, GORE Santiago (bosques de bolsillo como refugios climáticos, ≈ $60,5 M por sitio)",
-          "titulo_vecino": "Programa Brotar: bosques de bolsillo como refugios climáticos en la RM (GORE Santiago)",
-          "costo_M": 60.5,
-          "url": "https://www.gobiernosantiago.cl/2024/04/04/gobierno-de-santiago-y-cultiva-inauguran-bosque-de-bolsillo-de-crecimiento-acelerado-con-innovadora-tecnica-para-hacer-frente-al-calor-extremo/"
         }
       ]
     },

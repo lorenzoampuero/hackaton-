@@ -501,32 +501,26 @@
       h("p", { class: "nota" }, "Este informe aporta parte de esa evidencia: demanda vecinal medida, mediciones del lugar y participación local.")];
   }
   function bloqueObrasSimilares(f) {
-    const vistos = new Set();
-    const items = [];
+    let mejor = null;
     const fuentes = [f.gan, ...f.opciones.filter((o) => !f.gan || o.id !== f.gan.id)];
     for (const op of fuentes) {
       if (!op) continue;
       const cat = estado.catalogo[op.id];
       if (!cat || !cat.ejemplos || !cat.ejemplos.length) continue;
-      for (const ej of cat.ejemplos) {
-        const key = ej.url + "|" + ej.titulo;
-        if (vistos.has(key)) continue;
-        vistos.add(key);
-        items.push({ opcion: cat.nombre, titulo: ej.titulo, url: ej.url });
-        if (items.length >= 4) break;
-      }
-      if (items.length >= 4) break;
+      const ej = cat.ejemplos[0];
+      mejor = { opcion: cat.nombre, titulo: ej.titulo, url: ej.url };
+      break;
     }
-    if (!items.length) return null;
+    if (!mejor) return null;
     const panel = h("div", { class: "fuentes-panel", hidden: true },
-      h("p", { class: "nota" }, "Obras similares financiadas en Chile que respaldan los rangos mostrados."),
-      ...items.map((x) => h("div", { class: "fondo" }, h("b", {}, x.opcion), h("small", {}, h("a", { href: x.url, target: "_blank", rel: "noopener noreferrer" }, x.titulo)))));
-    const btn = h("button", { class: "btn-fuentes", type: "button", "aria-expanded": "false" }, "Consultar fuentes (" + items.length + ") ▾");
+      h("p", { class: "nota" }, "Obra similar financiada en Chile que respalda la referencia."),
+      h("div", { class: "fondo" }, h("b", {}, mejor.opcion), h("small", {}, h("a", { href: mejor.url, target: "_blank", rel: "noopener noreferrer" }, mejor.titulo))));
+    const btn = h("button", { class: "btn-fuentes", type: "button", "aria-expanded": "false" }, "Consultar fuente ▾");
     btn.addEventListener("click", () => {
       const abierta = panel.hidden;
       panel.hidden = !abierta;
       btn.setAttribute("aria-expanded", String(abierta));
-      btn.textContent = abierta ? "Ocultar fuentes ▴" : "Consultar fuentes (" + items.length + ") ▾";
+      btn.textContent = abierta ? "Ocultar fuente ▴" : "Consultar fuente ▾";
     });
     return [h("div", { class: "fuentes-wrap" }, btn, panel)];
   }
