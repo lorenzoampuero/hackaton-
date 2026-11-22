@@ -151,115 +151,153 @@
     }
   ],
   "modelo_negocio": {
-    "tipo": "B2B2G + SaaS municipal (enfoque Compra Ágil ChileCompra)",
+    "tipo": "SaaS B2B2G + Consultoras + Inmobiliarias (valores netos + IVA, ref. 1 UF ≈ $41.280)",
     "etiqueta_general": "hipótesis (sin verificar)",
-    "regla_freemium": "El visor público abierto y el paquete de diagnóstico inicial (hasta 5 sitios prioritarios con mapa y ficha básica) permanecen gratuitos para habilitar postulación y transparencia ciudadana.",
-    "umbral_compra_agil_utm": 100,
-    "umbral_compra_agil_clp_aprox": 7240000,
-    "nota_compra_agil": "Planes base diseñados por debajo del tope de Compra Ágil (100 UTM ≈ $7.240.000 CLP; hipótesis de mercado para acelerar contratación directa sin licitación larga).",
+    "uf_referencia_clp": 41280,
+    "regla_freemium": "Plan Gratis ($0): mapa público de solo lectura, indicadores básicos, Top 5 en pantalla y hasta 2 exportaciones gratuitas de datos. Informes IA, White-Label y descargas masivas requieren activar un plan.",
+    "nota_compra_agil": "Todos los planes y suscripciones anuales operan muy por debajo del tope de Compra Ágil (100 UTM ≈ $7.240.000 CLP), permitiendo contratación municipal directa en días.",
     "escalera_planes": [
       {
+        "id": "gratis",
         "nivel": 0,
-        "nombre": "Nivel 0 — Visor Abierto y Diagnóstico Base",
-        "publico_objetivo": "Municipalidades, organizaciones barriales, prensa y ciudadanía",
+        "nombre": "Gratis (Demo / Público)",
+        "destacado": false,
+        "precio_uf_mes": 0,
         "precio_clp": 0,
-        "periodicidad": "Gratuito",
+        "precio_texto": "$0",
+        "anual_texto": "Siempre gratis",
+        "por_que": "Igual que EOSDA y Felt Free: sirve para que consultores, vecinos y municipios prueben el valor sin fricción antes de comprar.",
+        "publico_objetivo": "Consultores, vecinos, estudiantes y municipios evaluando el MVP",
+        "exportaciones_limite": 2,
+        "informes_ia_limite": 0,
+        "costo_unitario_clp": 150,
+        "margen_bruto_pct": 0,
         "etiqueta": "hipótesis (sin verificar)",
         "incluye": [
-          "Mapa abierto de parques OSM con cálculo NDVI/NDMI y vulnerabilidad Censo 2024",
-          "Top 5 de sitios prioritarios y ficha descargable para primera revisión en terreno",
-          "Comparador intercomunal y guía metodológica abierta"
-        ],
-        "horas_soporte": "0 horas dedicadas (autoservicio)"
+          "Mapa público solo lectura de comunas demo y fotografía aérea real",
+          "Indicadores básicos (calor verano, salud verde %, árboles vs cemento, Censo) y Top 5",
+          "Hasta 2 exportaciones gratuitas de datos CSV/JSON de prueba",
+          "Sin Asistente IA ni generación de informes IA en vivo"
+        ]
       },
       {
+        "id": "pase_proyecto",
         "nivel": 1,
-        "nombre": "Nivel 1 — Diagnóstico para Postulación a Fondos",
-        "publico_objetivo": "SECPLA / Dirección de Medio Ambiente municipal",
-        "precio_min_clp": 1800000,
-        "precio_max_clp": 3200000,
-        "periodicidad": "Pago único por paquete",
+        "nombre": "Pase por Proyecto (Pago único)",
+        "destacado": false,
+        "precio_uf_mes": 1.5,
+        "precio_clp": 62000,
+        "precio_texto": "1,5 UF (~$62.000)",
+        "anual_texto": "Pago único · 15 días de acceso",
+        "por_que": "Entrada sin compromiso para quien tiene una licitación o entrega puntual; si necesita 2 al mes, le conviene suscribirse.",
+        "publico_objetivo": "Consultores o municipios en postulación puntual MINVU / SUBDERE",
+        "exportaciones_limite": 20,
+        "informes_ia_limite": 1,
+        "costo_unitario_clp": 1200,
+        "margen_bruto_pct": 98.1,
         "etiqueta": "hipótesis (sin verificar)",
         "incluye": [
-          "Informe técnico verificable listo para adjuntar a MINVU / PMU SUBDERE / FPA",
-          "Anexo tabular completo por manzana censal y sitio (.csv, .geojson, .docx)",
-          "Comparación frente a comuna control y priorización de arborización"
-        ],
-        "horas_soporte": "8–12 horas técnicas incluidas"
+          "Acceso 15 días a 1 comuna o sitio con captura fotográfica del mapa",
+          "1 informe IA verificado listo para licitación o postulación",
+          "Descarga completa: PDF, Word (.docx), Excel/CSV y GeoJSON (20 exportaciones)"
+        ]
       },
       {
+        "id": "profesional",
         "nivel": 2,
-        "nombre": "Nivel 2 — Monitoreo Mensual Municipal",
-        "publico_objetivo": "Dirección de Aseo y Ornato / Medio Ambiente",
-        "precio_min_clp": 450000,
-        "precio_max_clp": 750000,
-        "periodicidad": "Mensual (bajo tope Compra Ágil anual)",
+        "nombre": "Profesional (Independiente)",
+        "destacado": false,
+        "precio_uf_mes": 1.5,
+        "precio_clp": 62000,
+        "precio_texto": "1,5 UF/mes (~$62.000)",
+        "anual_texto": "Anual: 1,2 UF/mes (~$50.000)",
+        "por_que": "Más barato que 1 licencia de ArcGIS Online ($78k/mes) y en línea con Auravant Pro ($59/mes), pero entregando análisis e informes ya listos.",
+        "publico_objetivo": "Arquitectos paisajistas, consultores ambientales e independientes",
+        "exportaciones_limite": 50,
+        "informes_ia_limite": 3,
+        "costo_unitario_clp": 2400,
+        "margen_bruto_pct": 96.1,
         "etiqueta": "hipótesis (sin verificar)",
         "incluye": [
-          "Actualización mensual de Sentinel-2 NDVI/NDMI y cruce climático Open-Meteo",
-          "Alertas tempranas de caída foliar y estrés hídrico en verano",
-          "Tablero compartido con exportables mensuales para cuadrillas"
-        ],
-        "horas_soporte": "4 horas/mes de revisión"
+          "1 usuario y hasta 2 comunas activas",
+          "Mapa satelital multicapa completo (salud vegetal, humedad hojas, calor, árboles, Censo, aire)",
+          "3 informes + consultas con Asistente IA al mes",
+          "Exportación PDF, Word (.docx), CSV y pestaña Casos y Archivos"
+        ]
       },
       {
+        "id": "consultora",
         "nivel": 3,
-        "nombre": "Nivel 3 — Paquete Estival + Terreno",
-        "publico_objetivo": "Comunas con alta isla de calor o déficit de dosel",
-        "precio_min_clp": 4800000,
-        "precio_max_clp": 6900000,
-        "periodicidad": "Anual (dentro de tope Compra Ágil 100 UTM)",
+        "nombre": "Consultora ⭐ (Plan principal)",
+        "destacado": true,
+        "precio_uf_mes": 4.5,
+        "precio_clp": 186000,
+        "precio_texto": "4,5 UF/mes (~$186.000)",
+        "anual_texto": "Anual: 3,7 UF/mes (~$153.000)",
+        "por_que": "En el rango de TOCTOC Escala (5 UF) y bajo Felt Team ($199–$249/mes); se paga solo con 1 proyecto que gane o acelere la consultora.",
+        "publico_objetivo": "Consultoras urbanas, SECPLA municipales y estudios ambientales",
+        "exportaciones_limite": 500,
+        "informes_ia_limite": 15,
+        "costo_unitario_clp": 8500,
+        "margen_bruto_pct": 95.4,
         "etiqueta": "hipótesis (sin verificar)",
         "incluye": [
-          "Monitoreo mensual + seguimiento semanal en temporada crítica (diciembre–marzo)",
-          "Integración de evidencia fotográfica georreferenciada de cuadrillas en terreno",
-          "Dossier completo de cierre para rendición de fondos públicos"
-        ],
-        "horas_soporte": "24 horas/año de acompañamiento"
+          "Hasta 5 usuarios + lectores ilimitados y 10 comunas",
+          "15 informes + chat IA con fotos y casos guardados en Supabase/mes",
+          "White-Label (logo y colores propios en informes Word/PDF)",
+          "Exportación GeoJSON/QGIS/Excel, historial satelital 24 meses y alertas mensuales"
+        ]
       },
       {
+        "id": "empresa",
         "nivel": 4,
-        "nombre": "Nivel 4 — Alianza Regional / GORE / SERVIU",
-        "publico_objetivo": "Gobiernos Regionales, SERVIU o asociaciones de municipios",
-        "precio_min_clp": 14000000,
-        "precio_max_clp": 28000000,
-        "periodicidad": "Anual vía licitación / convenio",
+        "nombre": "Empresa (Multi-territorio)",
+        "destacado": false,
+        "precio_uf_mes": 9.5,
+        "precio_clp": 392000,
+        "precio_texto": "9,5 UF/mes (~$392.000)",
+        "anual_texto": "Anual: 7,8 UF/mes (~$322.000)",
+        "por_que": "Menos que Felt Business ($599/mes) o Deepblocks ($500/mes) y al nivel de TOCTOC Círculo (10 UF); pensado para mantenedoras grandes, inmobiliarias o equipos ESG.",
+        "publico_objetivo": "Mantenedoras de áreas verdes, inmobiliarias, constructoras y equipos ESG",
+        "exportaciones_limite": 9999,
+        "informes_ia_limite": 9999,
+        "costo_unitario_clp": 24000,
+        "margen_bruto_pct": 93.9,
         "etiqueta": "hipótesis (sin verificar)",
         "incluye": [
-          "Cobertura multicomunal homologada con ranking de equidad territorial",
-          "Soporte a cartera regional de inversión en arbolado y refugios climáticos",
-          "Auditoría metodológica semestral y capacitación a equipos locales"
-        ],
-        "horas_soporte": "80 horas/año"
-      },
-      {
-        "nivel": 5,
-        "nombre": "Nivel 5 — Integración Corporativa / RSE Territorial",
-        "publico_objetivo": "Empresas privadas (patrocinio de parques y refugios climáticos)",
-        "precio_min_clp": 6000000,
-        "precio_max_clp": 18000000,
-        "periodicidad": "Por convenio anual (modelo B2B2G)",
-        "etiqueta": "hipótesis (sin verificar)",
-        "incluye": [
-          "Selección transparente de parques vulnerables para cofinanciamiento de sombra/arbolado",
-          "Seguimiento satelital auditado antes y después de la intervención",
-          "Reporte anual público sin afirmaciones no verificables de carbono o salud"
-        ],
-        "horas_soporte": "Según convenio"
+          "Usuarios ilimitados y todo Chile (hasta 35 comunas)",
+          "Informes y Asistente IA ilimitados + análisis multimodal de fotografías",
+          "White-Label total + subdominio propio + verificación antes/después de contratos",
+          "API/GeoJSON corporativo y soporte prioritario"
+        ]
       }
     ],
-    "escenario_3_anos": {
-      "etiqueta": "hipótesis (sin verificar)",
-      "anio_1": "3 a 5 municipalidades piloto vía Compra Ágil (Nivel 1–3) + validación con 2 postulaciones reales a fondos MINVU/PMU.",
-      "anio_2": "12 a 18 municipalidades activas + 1 convenio regional/asociativo + primeros cofinanciamientos B2B2G.",
-      "anio_3": "25 a 35 municipalidades y 2 a 3 convenios regionales con cartera estable de seguimiento de intervenciones."
-    },
-    "plan_validacion_2_semanas": [
-      "Semana 1: Presentar el prototipo con datos reales a 3 direcciones municipales (SECPLA / Ornato / Medio Ambiente) en Cerro Navia, San Miguel o Quilicura.",
-      "Semana 1: Verificar en terreno al menos 5 de los sitios del Top 5 con fotografía local y cotejo visual frente al recorte Sentinel-2.",
-      "Semana 2: Validar si el formato de informe .docx/.pdf cubre los campos de evidencia requeridos por un formulario real de PMU SUBDERE o FPA MMA.",
-      "Semana 2: Contrastar disposición a pagar bajo modalidad Compra Ágil (< 100 UTM) y ajustar alcance de Nivel 1 y Nivel 2."
+    "addons_opcionales": [
+      { "nombre": "Comuna adicional", "precio": "0,4 UF/mes (~$16.500)" },
+      { "nombre": "Pack 5 informes IA extra", "precio": "0,5 UF (~$20.600)" },
+      { "nombre": "Módulo de terrenos para constructoras", "precio": "+2,0 UF/mes (~$82.560)" }
     ],
-    "nota_licencia_clima": "El prototipo usa Open-Meteo (CC BY 4.0, uso no comercial). Para operación comercial en Nivel 2–5 se debe migrar la ingesta climática a licencia comercial de Open-Meteo o red oficial DMC / Meteored."
+    "competencia": [
+      { "nombre": "Pulmón Urbano (Consultora ⭐)", "precio": "4,5 UF/mes ($186k)", "tiempo_informe": "3 minutos (listo para MINVU)", "ia_verificada": "Sí (citas y fotos)", "foco_chile": "100% Chile + Censo 2024" },
+      { "nombre": "ArcGIS Online", "precio": "~$78.000/mes solo licencia", "tiempo_informe": "2–3 semanas (analista GIS)", "ia_verificada": "No", "foco_chile": "Genérico mundial" },
+      { "nombre": "TOCTOC Escala / Círculo", "precio": "5 – 10 UF/mes ($206k–$413k)", "tiempo_informe": "Manual / dashboards", "ia_verificada": "No ambiental", "foco_chile": "Inmobiliario comercial" },
+      { "nombre": "Felt Team / Business", "precio": "$199 – $599 USD/mes", "tiempo_informe": "Solo visor colaborativo", "ia_verificada": "No", "foco_chile": "Sin fuentes chilenas" },
+      { "nombre": "Deepblocks / Auravant Pro", "precio": "$59 – $500 USD/mes", "tiempo_informe": "Agrícola / zoni. EE.UU.", "ia_verificada": "Parcial", "foco_chile": "No municipal Chile" }
+    ],
+    "bml_ciclo": {
+      "construir": "Motor satelital automático en 542 parques (4 comunas piloto), captura fotográfica aérea real y Asistente IA conectado a Supabase y Vercel.",
+      "medir": "Tasa de activación Gratis → Pase/Consultora, exportaciones por usuario (límite 2 en Gratis), consultas IA con imagen y expedientes guardados.",
+      "aprender": "Validar con 3 SECPLA y 2 consultoras si el ahorro de 3 semanas → 3 minutos y los formatos Word/PDF MINVU convierten al Plan Consultora (4,5 UF/mes)."
+    },
+    "privacidad_y_confianza": {
+      "marco_legal": "Cumple Ley 19.628 y nueva Ley 21.719 sobre Protección de Datos Personales en Chile.",
+      "principios": [
+        "Cero datos personales de vecinos: el cruce censal utiliza únicamente estadísticas agregadas por entorno de 400 m (INE Censo 2024).",
+        "Control del cliente sobre fotografías: las fotos de terreno o capturas de parques se guardan solo en tu cuenta y casos en Supabase con acceso protegido (RLS).",
+        "Verificador anti-alucinaciones: la IA tiene prohibido inventar cifras, usar lenguaje causal falso o prometer retornos sin respaldo del paquete de datos.",
+        "Porcentaje de confianza transparente (93%–96% comunal): combina 5 fuentes oficiales (Copernicus Sentinel-2, NASA Landsat 8/9, ESA WorldCover 2021, Copernicus CAMS/ERA5 e INE Censo 2024)."
+      ]
+    },
+    "nota_licencia_clima": "El prototipo usa Open-Meteo (CC BY 4.0, uso no comercial). Para operación comercial en planes de pago se contempla migrar la ingesta climática a licencia comercial Open-Meteo o red oficial DMC."
   }
 }

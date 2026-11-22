@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Pulmón Urbano — Inteligencia Satelital y Cartera de Arbolado Municipal</title>
+  <title>Pulmón Urbano — Dónde plantar árboles primero en Chile</title>
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
   <link rel="stylesheet" href="style.css">
 </head>
@@ -14,16 +14,17 @@
         <span class="brand-mark" aria-hidden="true">PU</span>
         <div>
           <h1>Pulmón Urbano</h1>
-          <p class="brand-sub">Inteligencia satelital verde</p>
+          <p class="brand-sub">Priorizador satelital de arbolado urbano</p>
         </div>
       </div>
 
       <nav class="main-nav" role="tablist" aria-label="Vistas principales">
-        <button type="button" class="nav-tab active" data-view="mapa" role="tab" aria-selected="true">Mapa satelital</button>
-        <button type="button" class="nav-tab" data-view="informe-ia" role="tab" aria-selected="false">Informe IA de Inversión</button>
+        <button type="button" class="nav-tab active" data-view="mapa" role="tab" aria-selected="true">Mapa y Parques</button>
+        <button type="button" class="nav-tab" data-view="informe-ia" role="tab" aria-selected="false">Asistente e Informe IA</button>
         <button type="button" class="nav-tab" data-view="casos" role="tab" aria-selected="false">
           Casos y Archivos <span class="nav-count" id="navCasosCount">0</span>
         </button>
+        <button type="button" class="nav-tab" data-view="planes" role="tab" aria-selected="false">Planes y Viabilidad</button>
       </nav>
     </div>
 
@@ -33,40 +34,54 @@
         <select id="selectComuna" aria-label="Seleccionar comuna"></select>
       </label>
       <div class="util-actions">
+        <button type="button" class="plan-pill-top" id="badgePlanActivo" title="Ver o cambiar plan">Plan Gratis · 2 export.</button>
+        <button type="button" class="btn btn-outline-primary" id="btnLoginUsuario">Iniciar sesión</button>
         <button type="button" class="btn btn-quiet" id="btnComparar">Comparar</button>
-        <button type="button" class="btn btn-quiet" id="btnPlanes">Planes B2B2G</button>
         <button type="button" class="btn btn-quiet" id="btnAyuda">Guía</button>
       </div>
     </div>
   </header>
 
-  <!-- VISTA 1: MAPA SATELITAL -->
+  <!-- FRANJA EJECUTIVA LEGIBLE DESDE LEJOS ("WOW FACTOR") -->
+  <section class="hero-impact-strip no-print" id="heroImpactStrip" aria-label="Resumen del impacto">
+    <div class="hero-impact-main">
+      <strong>¿Dónde plantar árboles y enfriar la ciudad primero?</strong>
+      <span>De 3 semanas de consultoría GIS a 3 minutos con datos verificados para postular a fondos MINVU / GORE.</span>
+    </div>
+    <div class="hero-impact-badges tabular">
+      <span class="hero-pill hero-pill-conf" id="heroConfianzaBadge">Confianza del dato: 94% (5 fuentes)</span>
+      <span class="hero-pill">Meta: 30% cobertura arbórea</span>
+      <button type="button" class="hero-pill hero-pill-link" id="btnIrPrivacidad">Privacidad Ley 21.719 ✓</button>
+    </div>
+  </section>
+
+  <!-- VISTA 1: MAPA SATELITAL Y PARQUES -->
   <div class="view-pane active no-print" id="view-mapa">
-    <section class="kpi-strip" id="kpiStrip" aria-label="Indicadores comunales multi-satélite">
+    <section class="kpi-strip" id="kpiStrip" aria-label="Indicadores comunales en lenguaje claro">
       <div class="kpi-card">
-        <span class="kpi-label">Calor verano Landsat 8/9</span>
+        <span class="kpi-label">Calor del suelo en verano</span>
         <strong class="kpi-val tabular" id="kpiLst">—</strong>
         <span class="kpi-note" id="kpiLstNota">—</span>
       </div>
       <div class="kpi-card">
-        <span class="kpi-label">Dosel vs cemento (WorldCover 2021)</span>
+        <span class="kpi-label">Árboles vs. cemento hoy</span>
         <strong class="kpi-val tabular" id="kpiDosel">—</strong>
         <span class="kpi-note" id="kpiDoselNota">—</span>
       </div>
       <div class="kpi-card">
-        <span class="kpi-label">Sitios OSM con lectura satelital</span>
-        <strong class="kpi-val tabular" id="kpiSitios">—</strong>
-        <span class="kpi-note" id="kpiSitiosNota">—</span>
+        <span class="kpi-label">Árboles que faltan (meta 30%)</span>
+        <strong class="kpi-val tabular" id="kpiArboles">—</strong>
+        <span class="kpi-note">Meta mínima comunal</span>
       </div>
       <div class="kpi-card">
-        <span class="kpi-label">Aire PM2.5 y UV (Copernicus CAMS)</span>
+        <span class="kpi-label">Calidad del aire (PM2.5)</span>
         <strong class="kpi-val tabular" id="kpiAire">—</strong>
         <span class="kpi-note" id="kpiAireNota">—</span>
       </div>
       <div class="kpi-card">
-        <span class="kpi-label">Árboles estimados hacia meta 30%</span>
-        <strong class="kpi-val tabular" id="kpiArboles">—</strong>
-        <span class="kpi-note">Meta 30% dosel comunal</span>
+        <span class="kpi-label">Confianza y parques medidos</span>
+        <strong class="kpi-val tabular" id="kpiSitios">—</strong>
+        <span class="kpi-note" id="kpiSitiosNota">—</span>
       </div>
     </section>
 
@@ -74,68 +89,68 @@
       <aside class="sidebar" id="sidebar">
         <div class="panel-block">
           <div class="panel-title-row">
-            <h2>Capa y filtros</h2>
+            <h2>Qué quieres ver en el mapa</h2>
             <button type="button" class="btn-mini mobile-only" id="btnToggleSidebar">Cerrar</button>
           </div>
 
           <div class="filter-stack">
             <label class="field-label">
-              <span>Capa del mapa</span>
-              <select id="selectCapaMapa" aria-label="Capa satelital del mapa">
-                <option value="prioridad" selected>Prioridad satelital integrada</option>
-                <option value="calor">Isla de calor Landsat (°C)</option>
-                <option value="ndvi">Vigor vegetal Sentinel-2 (NDVI / SAVI)</option>
-                <option value="ndmi">Humedad foliar Sentinel-2 (NDMI)</option>
-                <option value="censo">Censo 2024: techos y hacinamiento</option>
+              <span>Indicador en colores</span>
+              <select id="selectCapaMapa" aria-label="Indicador del mapa">
+                <option value="prioridad" selected>Urgencia para plantar árboles</option>
+                <option value="calor">Calor del suelo en verano (°C)</option>
+                <option value="ndvi">Salud del pasto y árboles (%)</option>
+                <option value="ndmi">Falta de agua en hojas</option>
+                <option value="censo">Techos calientes y hacinamiento</option>
               </select>
             </label>
 
             <div class="filter-pair">
               <label class="field-label">
-                <span>Señal</span>
+                <span>Filtrar alerta</span>
                 <select id="selectSenal">
                   <option value="todas">Todas</option>
-                  <option value="isla_calor">Calor &ge; 36,5 °C</option>
-                  <option value="brecha_dosel">Dosel &lt; 20%</option>
-                  <option value="estres_hidrico">Estrés hojas</option>
-                  <option value="veg_caida">Caída NDVI</option>
-                  <option value="calor_vulnerabilidad">Vivienda + sombra</option>
+                  <option value="isla_calor">Calor alto (&ge; 36,5 °C)</option>
+                  <option value="brecha_dosel">Poca sombra (&lt; 20%)</option>
+                  <option value="estres_hidrico">Hojas con sed</option>
+                  <option value="veg_caida">Pasto seco / caída</option>
+                  <option value="calor_vulnerabilidad">Vivienda + calor</option>
                 </select>
               </label>
               <label class="field-label">
-                <span>Buscar</span>
-                <input type="search" id="inputBuscar" placeholder="Parque o ID…">
+                <span>Buscar plaza</span>
+                <input type="search" id="inputBuscar" placeholder="Nombre de plaza…">
               </label>
             </div>
 
             <label class="checkbox-row">
               <input type="checkbox" id="chkOcultarPequenos">
-              <span>Solo parques &ge; 5.000 m&sup2; (PNG HD)</span>
+              <span>Solo parques grandes (&ge; 0,5 ha)</span>
             </label>
           </div>
         </div>
 
         <div class="panel-block">
           <div class="panel-title-row">
-            <h2>Modelo de ranking</h2>
+            <h2>Cómo ordenar la prioridad</h2>
           </div>
 
           <div class="segmented" role="group" aria-label="Modo de ranking">
-            <button type="button" class="seg-btn active" id="btnModoSat" data-modo="satelital">Solo satélites</button>
-            <button type="button" class="seg-btn" id="btnModoCenso" data-modo="mixto">+ Censo térmico</button>
+            <button type="button" class="seg-btn active" id="btnModoSat" data-modo="satelital">Solo clima y árboles</button>
+            <button type="button" class="seg-btn" id="btnModoCenso" data-modo="mixto">+ Vecinos (Censo)</button>
           </div>
           <p class="hint" id="descModoRanking">
-            Ordena únicamente por calor superficial Landsat °C, falta de dosel/cemento WorldCover y vigor Sentinel-2.
+            Prioriza según calor de verano, cemento alrededor del parque y estado real del pasto y árboles.
           </p>
 
           <div id="censoSlidersWrap" class="censo-sliders hidden">
-            <div class="panel-title-row" style="margin-top:8px;">
-              <span class="hint" style="margin:0;font-weight:600;">Pesos Censo 2024 habitacional</span>
+            <div class="panel-title-row" style="margin-top:6px;">
+              <span class="hint" style="margin:0;font-weight:600;">Importancia de cada factor vecinal</span>
               <button type="button" class="btn-link" id="btnResetPesos">Restablecer</button>
             </div>
             <div class="slider-item">
               <div class="slider-head">
-                <label for="pesoTecho">Techos zinc / fibrocemento / precarios</label>
+                <label for="pesoTecho">Techos de zinc / calor habitacional</label>
                 <strong class="tabular" id="valPesoTecho">40%</strong>
               </div>
               <input type="range" id="pesoTecho" min="0" max="100" step="5" value="40">
@@ -149,7 +164,7 @@
             </div>
             <div class="slider-item">
               <div class="slider-head">
-                <label for="pesoBajoVerde">Déficit de área verde (m&sup2;/hab)</label>
+                <label for="pesoBajoVerde">Falta de áreas verdes por vecino</label>
                 <strong class="tabular" id="valPesoBajoVerde">30%</strong>
               </div>
               <input type="range" id="pesoBajoVerde" min="0" max="100" step="5" value="30">
@@ -159,7 +174,7 @@
 
         <div class="panel-block top5-block">
           <div class="panel-title-row">
-            <h2>Top 5 en <span id="top5ComunaNombre">—</span></h2>
+            <h2>Top 5 urgentes en <span id="top5ComunaNombre">—</span></h2>
           </div>
           <ol class="top5-list" id="listaTop5"></ol>
         </div>
@@ -171,16 +186,16 @@
           <span id="estadoFiltroResumen" class="hint-inline"></span>
         </div>
 
-        <div class="basemap-switcher" role="group" aria-label="Mapa base">
-          <button type="button" class="bm-btn active" data-basemap="claro">Mapa claro</button>
-          <button type="button" class="bm-btn" data-basemap="satelite">Satélite HD</button>
+        <div class="basemap-switcher" role="group" aria-label="Fondo del mapa">
+          <button type="button" class="bm-btn active" data-basemap="satelite">Foto Satélite Real</button>
+          <button type="button" class="bm-btn" data-basemap="claro">Mapa limpio</button>
           <button type="button" class="bm-btn" data-basemap="osm">Calles</button>
         </div>
 
         <div id="map"></div>
         <div class="map-legend" id="mapLegend" aria-live="polite"></div>
 
-        <aside class="site-drawer hidden" id="siteDrawer" aria-label="Ficha técnica del sitio">
+        <aside class="site-drawer hidden" id="siteDrawer" aria-label="Ficha clara del parque">
           <div class="drawer-header">
             <div style="min-width:0;">
               <div class="drawer-badges" id="drawerBadges"></div>
@@ -195,8 +210,8 @@
 
           <div class="tabs-bar" role="tablist">
             <button type="button" class="tab-btn active" data-tab="resumen" role="tab">Resumen</button>
-            <button type="button" class="tab-btn" data-tab="imagenes" role="tab">Satélites</button>
-            <button type="button" class="tab-btn" data-tab="serie" role="tab">Serie</button>
+            <button type="button" class="tab-btn" data-tab="imagenes" role="tab">Satélite (Foto)</button>
+            <button type="button" class="tab-btn" data-tab="serie" role="tab">Evolución</button>
             <button type="button" class="tab-btn" data-tab="inversion" role="tab">Inversión</button>
             <button type="button" class="tab-btn" data-tab="informe" role="tab">Informe</button>
           </div>
@@ -213,26 +228,27 @@
     </main>
   </div>
 
-  <!-- VISTA 2: INFORME IA DE INVERSIÓN -->
-  <section class="view-pane view-page no-print" id="view-informe-ia" aria-label="Informe ejecutivo de inversión">
+  <!-- VISTA 2: ASISTENTE IA SIMPLE + TABLA EJECUTIVA DE INVERSIÓN -->
+  <section class="view-pane view-page no-print" id="view-informe-ia" aria-label="Asistente e informe de inversión">
     <div class="page-container">
       <div class="page-header">
         <div>
-          <h2>Informe IA de Inversión Prioritaria</h2>
-          <p class="page-sub">Cartera cuantificada de los parques prioritarios donde concentrar arbolado, sombra y mitigación térmica.</p>
+          <h2>Asistente IA e Inversión Prioritaria</h2>
+          <p class="page-sub">Pregunta en español simple sobre tus comunas, adjunta fotos o casos guardados y obtén respuestas listas para decidir.</p>
         </div>
         <div class="page-controls">
-          <button type="button" class="btn btn-primary" id="btnGenerarIAVivo" disabled>Redactar con IA</button>
-          <button type="button" class="btn btn-quiet hidden" id="btnRestaurarIA">Ver plantilla base</button>
+          <button type="button" class="btn btn-primary" id="btnGenerarIAVivo" disabled>Redactar informe completo IA</button>
+          <button type="button" class="btn btn-quiet hidden" id="btnRestaurarIA">Ver versión base</button>
           <button type="button" class="btn btn-quiet" id="btnIaDocx">Word (.docx)</button>
           <button type="button" class="btn btn-quiet" id="btnIaPdf">PDF</button>
-          <button type="button" class="btn btn-quiet" id="btnIaGuardarCaso">Guardar</button>
-          <button type="button" class="btn btn-quiet" id="btnCopiarPaqueteIA">Copiar JSON</button>
+          <button type="button" class="btn btn-quiet" id="btnIaCsv">Excel / CSV</button>
+          <button type="button" class="btn btn-quiet" id="btnIaGuardarCaso">Guardar en Casos</button>
+          <button type="button" class="btn btn-quiet hidden" id="btnCopiarPaqueteIA">JSON</button>
         </div>
       </div>
 
       <div class="ia-toolbar">
-        <div class="scope-pills" id="iaScopePills" role="group" aria-label="Ámbito del informe">
+        <div class="scope-pills" id="iaScopePills" role="group" aria-label="Ámbito del análisis">
           <button type="button" class="pill-btn active" data-scope="intercomunal">Todas (4 comunas)</button>
           <button type="button" class="pill-btn" data-scope="cerro_navia">Cerro Navia</button>
           <button type="button" class="pill-btn" data-scope="san_miguel">San Miguel</button>
@@ -246,8 +262,55 @@
           <option value="quilicura">Quilicura</option>
           <option value="vitacura">Vitacura</option>
         </select>
-        <p class="ia-status" id="estadoIAVivo" role="status" aria-live="polite">Comprobando servicio IA…</p>
+        <p class="ia-status" id="estadoIAVivo" role="status" aria-live="polite">Conectando con DeepSeek IA y Supabase…</p>
       </div>
+
+      <!-- CHAT IA SIMPLE CON PREGUNTAS FRECUENTES, FOTO Y CASOS -->
+      <section class="surface-card chat-ia-card" id="chatIaCard" aria-label="Chat Asistente Territorial">
+        <div class="chat-ia-head">
+          <div>
+            <h3>Asistente IA Territorial (Entrenado con datos reales de Pulmón Urbano)</h3>
+            <p class="hint" style="margin:0;">Elige un parque o caso de tu página, haz clic en una pregunta frecuente o sube/captura una fotografía.</p>
+          </div>
+          <div class="chat-ia-context-controls">
+            <select id="selectContextoChat" aria-label="Elegir parque o caso para preguntar">
+              <option value="comuna">Contexto: Comuna completa</option>
+            </select>
+            <label class="btn btn-quiet" style="display:inline-flex;align-items:center;gap:5px;">
+              Adjuntar foto
+              <input type="file" id="inputFotoChatIA" accept="image/jpeg,image/png,image/webp" style="display:none;">
+            </label>
+          </div>
+        </div>
+
+        <div id="chatPlanGateBanner" class="callout callout-warn hidden">
+          <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;">
+            <span><strong>Plan Gratis activo:</strong> Puedes explorar mapas, ver indicadores y usar tus <strong>2 exportaciones gratis</strong>. Para conversar con el Asistente IA o generar informes IA en vivo, activa un plan.</span>
+            <button type="button" class="btn btn-primary" id="btnDesbloquearDesdelaChat">Activar Plan Consultora (Demo 1 clic)</button>
+          </div>
+        </div>
+
+        <div id="chatFotoPreviewBox" class="chat-foto-preview hidden"></div>
+
+        <div class="faq-chips" id="chatFaqChips" role="group" aria-label="Preguntas frecuentes">
+          <button type="button" class="chip faq-chip" data-q="¿Cuáles son los 3 parques más urgentes aquí, cuánto calor tienen y cuántos árboles faltan en palabras simples?">Top 3 parques urgentes y presupuesto</button>
+          <button type="button" class="chip faq-chip" data-q="¿A qué fondo público (MINVU, PMU SUBDERE o FPA) conviene postular primero con estos datos y qué requisitos pide?">Fondo público ideal para postular</button>
+          <button type="button" class="chip faq-chip" data-q="Analiza la foto o los datos de este parque y dime qué plantar o qué mejoras hacer en terreno.">Analizar foto / qué plantar</button>
+          <button type="button" class="chip faq-chip" data-q="Explica en 4 puntos simples para una autoridad por qué esta comuna tiene más calor que Vitacura.">Resumen simple para alcalde / directorio</button>
+        </div>
+
+        <div class="chat-mensajes" id="chatMensajes">
+          <div class="chat-bubble chat-bubble-ia">
+            <strong>Asistente Pulmón Urbano</strong>
+            <p style="margin:4px 0 0;">Hola. Estoy entrenado con los datos reales de tus 4 comunas (542 parques), porcentajes de confianza, precios y fondos públicos de Chile. Selecciona un parque o haz clic en una pregunta frecuente para comenzar.</p>
+          </div>
+        </div>
+
+        <div class="chat-input-row">
+          <input type="text" id="inputChatIA" placeholder="Ej: ¿Conviene invertir primero en Plaza 12 de Octubre o Llico? ¿Qué muestra la foto?" aria-label="Escribe tu pregunta para la IA">
+          <button type="button" class="btn btn-primary" id="btnEnviarChatIA">Preguntar a IA</button>
+        </div>
+      </section>
 
       <div id="contenidoInformeIA"></div>
     </div>
@@ -258,8 +321,8 @@
     <div class="page-container">
       <div class="page-header">
         <div>
-          <h2>Casos y Archivos Guardados</h2>
-          <p class="page-sub">Expedientes insignia, carteras por comuna y análisis guardados en sesión o terreno.</p>
+          <h2>Casos, Fotos y Archivos Guardados</h2>
+          <p class="page-sub">Guarda fotos capturadas desde la página, respuestas de la IA y fichas técnicas sincronizadas con Supabase.</p>
         </div>
         <div class="page-controls">
           <label class="btn btn-primary" style="display:inline-flex;align-items:center;gap:6px;">
@@ -272,13 +335,13 @@
       <div class="cases-layout">
         <aside class="cases-list-col">
           <div class="cases-filters">
-            <input type="search" id="inputBuscarCaso" placeholder="Filtrar expedientes por sitio o comuna…">
+            <input type="search" id="inputBuscarCaso" placeholder="Buscar parque, caso o comuna…">
             <div class="filter-pair">
               <select id="selectFiltroTipoCaso" aria-label="Filtrar por tipo">
                 <option value="todos">Todos los tipos</option>
-                <option value="pitch">Casos del pitch (3)</option>
-                <option value="cartera">Carteras de inversión (5)</option>
-                <option value="guardado">Mis casos guardados</option>
+                <option value="pitch">Casos ejemplo (3)</option>
+                <option value="cartera">Carteras por comuna (5)</option>
+                <option value="guardado">Mis casos y fotos</option>
                 <option value="top5">Top 5 verificados</option>
               </select>
               <select id="selectFiltroComunaCaso" aria-label="Filtrar por comuna">
@@ -294,17 +357,64 @@
         </aside>
 
         <article class="cases-reader-col" id="visorCasoArchivo">
-          <p class="hint">Selecciona un expediente de la izquierda para inspeccionar mapas, notas de terreno y exportar.</p>
+          <p class="hint">Selecciona un expediente de la izquierda para inspeccionar fotos, notas y exportar.</p>
         </article>
       </div>
     </div>
   </section>
 
+  <!-- VISTA 4: PLANES, VIABILIDAD, COMPETENCIA Y PRIVACIDAD -->
+  <section class="view-pane view-page no-print" id="view-planes" aria-label="Planes, precios, viabilidad y privacidad">
+    <div class="page-container">
+      <div class="page-header">
+        <div>
+          <h2>Planes, Viabilidad Comercial y Privacidad de Datos</h2>
+          <p class="page-sub">Valores netos + IVA (referencia 1 UF &approx; $41.280 CLP). Toca cualquier plan para activarlo al instante en Supabase sin cobro real (modo demo).</p>
+        </div>
+        <div class="page-controls">
+          <div class="segmented" role="group" aria-label="Periodicidad">
+            <button type="button" class="seg-btn active" id="btnPlanMensual" data-mod="mensual">Pago mensual</button>
+            <button type="button" class="seg-btn" id="btnPlanAnual" data-mod="anual">Anual (-18%)</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="bannerPlanAceptado" class="callout callout-success hidden" role="status"></div>
+
+      <div class="surface-card" style="margin-bottom:16px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
+          <h3 style="margin:0;">Planes y Activación Instantánea (Demo Supabase)</h3>
+          <span class="badge badge-verificado" id="estadoUsoPlanResumen">Plan Gratis · 0 de 2 exportaciones usadas</span>
+        </div>
+        <div class="plans-grid" id="planesGrid"></div>
+        <div class="addons-strip" id="addonsGrid"></div>
+      </div>
+
+      <div class="surface-card" style="overflow-x:auto;margin-bottom:16px;">
+        <h3>Costes Unitarios, Márgenes Brutos y Comparación con Competencia</h3>
+        <p class="hint">Márgenes calculados sobre costo de servidores (Vercel + Supabase) y consultas IA (DeepSeek-V4.1-Flash). Valores de referencia de mercado en hipótesis (sin verificar).</p>
+        <div id="tablaCompetenciaMargenes"></div>
+      </div>
+
+      <div class="cards-grid" style="margin-bottom:16px;">
+        <div class="surface-card">
+          <h3>Nivel de Impacto &amp; Ciclo Construir → Medir → Aprender</h3>
+          <div id="bmlImpactGrid"></div>
+        </div>
+        <div class="surface-card" id="seccionPrivacidadDatos">
+          <h3>Políticas de Privacidad, Protección de Datos y Confiabilidad (%)</h3>
+          <div id="privacidadGrid"></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
   <footer class="app-footer no-print">
-    <span>Fuentes: NASA/USGS Landsat 8/9 · Copernicus Sentinel-2 &amp; CAMS (Open-Meteo CC BY 4.0 no comercial) · ESA WorldCover 2021 (CC BY 4.0) · OpenStreetMap (ODbL) · INE Censo 2024.</span>
-    <span>Montos y planes: <strong>hipótesis (sin verificar)</strong>. NDMI mide humedad foliar (hojas), no suelo.</span>
+    <span>Fuentes oficiales: Copernicus Sentinel-2 &amp; CAMS · NASA/USGS Landsat 8/9 · ESA WorldCover 2021 · Esri World Imagery · Open-Meteo ERA5 · INE Censo 2024.</span>
+    <span>Montos CLP y precios de suscripción: <strong>hipótesis (sin verificar)</strong>. Datos vecinales 100% agregados (Ley 21.719).</span>
   </footer>
 
+  <!-- MODAL GENÉRICO (COMPARADOR / GUÍA / UPGRADE) -->
   <div class="modal-backdrop hidden no-print" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal-card">
       <div class="modal-header">
@@ -312,6 +422,50 @@
         <button type="button" class="btn-close" id="btnCerrarModal" aria-label="Cerrar">&times;</button>
       </div>
       <div class="modal-content" id="modalContent"></div>
+    </div>
+  </div>
+
+  <!-- MODAL SIMPLE LOGIN / REGISTRO VISUAL (CONECTADO A SUPABASE) -->
+  <div class="modal-backdrop hidden no-print" id="modalLoginBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalLoginTitle">
+    <div class="modal-card" style="max-width:460px;">
+      <div class="modal-header">
+        <h2 id="modalLoginTitle">Acceso Demo — Pulmón Urbano</h2>
+        <button type="button" class="btn-close" id="btnCerrarLogin" aria-label="Cerrar acceso">&times;</button>
+      </div>
+      <div class="modal-content">
+        <div class="segmented" style="margin-bottom:12px;" role="group" aria-label="Modo de acceso">
+          <button type="button" class="seg-btn active" id="tabModoLogin">Iniciar sesión</button>
+          <button type="button" class="seg-btn" id="tabModoRegistro">Crear cuenta</button>
+        </div>
+        <p class="hint" id="loginDescModo">Acceso simplificado de demostración: guarda tu usuario y activa cualquier plan al instante en Supabase.</p>
+        <form id="formLoginDemo" class="filter-stack">
+          <label class="field-label">
+            <span>Nombre completo</span>
+            <input type="text" id="loginNombre" value="Equipo Evaluador" required>
+          </label>
+          <label class="field-label">
+            <span>Correo institucional o personal</span>
+            <input type="email" id="loginEmail" value="demo@pulmonurbano.cl" required>
+          </label>
+          <label class="field-label">
+            <span>Municipalidad / Consultora / Empresa</span>
+            <input type="text" id="loginOrg" value="Municipalidad Demo" required>
+          </label>
+          <label class="field-label">
+            <span>Rol</span>
+            <select id="loginRol">
+              <option value="Planificación Urbana (SECPLA)">Planificación Urbana (SECPLA)</option>
+              <option value="Consultora Ambiental / Paisajismo">Consultora Ambiental / Paisajismo</option>
+              <option value="Inmobiliaria / Constructora ESG">Inmobiliaria / Constructora ESG</option>
+              <option value="Dirección de Medio Ambiente / Ornato">Dirección de Medio Ambiente / Ornato</option>
+            </select>
+          </label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">
+            <button type="submit" class="btn btn-primary" id="btnEnviarLogin" style="flex:1;">Entrar y guardar perfil</button>
+            <button type="button" class="btn btn-quiet" id="btnDemoRapido">Acceso rápido 1 clic</button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 

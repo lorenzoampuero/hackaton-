@@ -329,3 +329,76 @@ def test_servidor_api_estado_y_error():
 
     resp_404 = client.post("/api/informe", json={"ambito": "comuna_inexistente"})
     assert resp_404.status_code == 404
+
+
+def test_confianza_pct_y_cartera_sin_duplicados():
+    resumen_path = WEB_DATA / "resumen.json"
+    if not resumen_path.exists():
+        pytest.skip("Aún no se genera web/data/resumen.json")
+    for slug in ("cerro_navia", "san_miguel", "vitacura", "quilicura"):
+        gj = json.loads((WEB_DATA / slug / "sitios.geojson").read_text(encoding="utf-8"))
+        for feat in gj["features"][:20]:
+            p = feat["properties"]
+            assert 60 <= int(p["confianza_pct"]) <= 100
+            assert 0 <= int(p["salud_vegetal_pct"]) <= 100
+
+    inv = json.loads((WEB_DATA / "informes_inversion.json").read_text(encoding="utf-8"))
+    for scope, bundle in inv.items():
+        sitios = bundle["paquete"]["cartera_sitios"]
+        nombres = [s["nombre"].split(" (Sector")[0].strip().lower() for s in sitios]
+        assert len(nombres) == len(set(nombres)), f"Nombres duplicados en cartera {scope}: {nombres}"
+
+
+def test_api_planes_chat_y_casos_supabase(monkeypatch):
+    from fastapi.testclient import TestClient
+    from app import servidor
+
+    client = TestClient(servidor.app)
+    est = client.get("/api/estado").json()
+    assert est["servidor"] is True
+    assert est["supabase_disponible"] is True
+
+    test_email = "pytest.demo@pulmonurbano.cl"
+    r_login = client.post(
+        "/api/auth/login",
+        json={"email": test_email, "nombre": "Test Pytest", "organizacion": "Municipalidad Test", "rol": "SECPLA"},
+    )
+    assert r_login.status_code == 200
+    assert r_login.json()["perfil"]["email"] == test_email
+
+    # En plan gratis el chat IA debe restringirse con HTTP 402
+    r_gratis = client.post("/api/plan/activar", json={"email": test_email, "plan_id": "gratis", "modalidad": "mensual"})
+    assert r_gratis.status_code == 200
+    r_gate = client.post("/api/chat", json={"pregunta": "Hola", "comuna_slug": "cerro_navia", "email": test_email})
+    assert r_gate.status_code == 402
+
+    # Activación en 1 clic a Consultora -> desbloquea chat IA
+    r_act = client.post("/api/plan/activar", json={"email": test_email, "plan_id": "consultora", "modalidad": "anual"})
+    assert r_act.status_code == 200
+    body_act = r_act.json()
+    assert "Plan aceptado" in body_act["mensaje"]
+    assert body_act["perfil"]["plan_id"] == "consultora"
+    assert body_act["perfil"]["informes_ia_limite"] == 15
+
+    monkeypatch.setattr(servidor, "_llamar_chat_llm", lambda _req, _ctx: ("Priorizar Parque Javiera Carrera (41,4 °C).", "deepseek:deepseek-flash"))
+    r_chat = client.post("/api/chat", json={"pregunta": "¿Qué plantar?", "comuna_slug": "cerro_navia", "email": test_email})
+    assert r_chat.status_code == 200
+    assert "Parque Javiera Carrera" in r_chat.json()["respuesta"]
+
+    # Casos con foto guardada
+    cid = "pytest-caso-foto-1"
+    r_save = client.post(
+        "/api/casos",
+        json={
+            "id": cid,
+            "user_email": test_email,
+            "comuna_slug": "san_miguel",
+            "site_id": "sm-w954383269",
+            "titulo": "Plaza 12 de Octubre — Foto Test",
+            "foto_data_url": "data:image/jpeg;base64,/9j/4AAQ",
+            "confianza_pct": 93,
+        },
+    )
+    assert r_save.status_code == 200
+    assert any(c["id"] == cid for c in client.get(f"/api/casos?email={test_email}").json()["casos"])
+    assert client.delete(f"/api/casos/{cid}").status_code == 200

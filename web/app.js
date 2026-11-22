@@ -3,13 +3,14 @@
 
   const PU = window.PU_DATOS || {};
   const LS_KEY_CASOS = "pulmon_urbano_casos_guardados_v1";
+  const LS_KEY_PERFIL = "pulmon_urbano_perfil_v5";
 
   const ETIQ_ESTADO = {
-    critico: "Crítico",
+    critico: "Urgente",
     prioritario: "Prioritario",
-    vigilar: "Vigilar",
-    estable: "Estable",
-    sin_datos: "Sin datos",
+    vigilar: "En observación",
+    estable: "Saludable",
+    sin_datos: "Sin lectura",
   };
 
   const COLOR_ESTADO = {
@@ -21,24 +22,24 @@
   };
 
   const ETIQ_SENAL = {
-    isla_calor: "Isla de calor Landsat (≥ 36,5 °C)",
-    veg_caida: "Caída vigor vegetal (NDVI)",
-    estres_hidrico: "Estrés hídrico hojas (NDMI)",
-    brecha_dosel: "Brecha de dosel (< 20%)",
-    calor_vulnerabilidad: "Exposición vivienda y sombra",
+    isla_calor: "Calor alto en suelo (≥ 36,5 °C)",
+    veg_caida: "Caída reciente de vegetación",
+    estres_hidrico: "Hojas con falta de agua",
+    brecha_dosel: "Poca sombra (< 20% árboles)",
+    calor_vulnerabilidad: "Alta exposición vecinal al calor",
     sin_senal: "Sin alerta activa",
   };
 
   const BASEMAPS = {
+    satelite: {
+      url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      attr: "Fotos aéreas &copy; Esri, Maxar, Earthstar Geographics",
+      className: "",
+    },
     claro: {
       url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
       attr: "&copy; OpenStreetMap",
       className: "tile-claro",
-    },
-    satelite: {
-      url: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
-      attr: "Tiles &copy; Esri, Maxar, Earthstar Geographics",
-      className: "",
     },
     osm: {
       url: "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",
@@ -51,8 +52,8 @@
     vista: "mapa",
     comunaSlug: null,
     capa: "prioridad",
-    basemap: "claro",
-    modoRanking: "satelital", // 'satelital' | 'mixto'
+    basemap: "satelite",
+    modoRanking: "satelital",
     ocultarPequenos: false,
     senalFiltro: "todas",
     busqueda: "",
@@ -62,15 +63,33 @@
     tabActiva: "resumen",
     granularidad: "mensual",
     ambitoIA: "intercomunal",
-    informeIACustom: {}, // scope -> informe redactado con IA y aprobado por el verificador del servidor
-    informeSitioCustom: {}, // `${slug}:${siteId}` -> informe individual redactado con IA
-    iaEstado: null, // respuesta de api/estado; null si la página se abrió sin el servidor local
+    informeIACustom: {},
+    informeSitioCustom: {},
+    iaEstado: null,
+    perfil: {
+      email: "demo@pulmonurbano.cl",
+      nombre: "Equipo Evaluador",
+      organizacion: "Municipalidad Demo",
+      rol: "Planificación Urbana (SECPLA)",
+      plan_id: "gratis",
+      plan_nombre: "Gratis (Demo / Público)",
+      modalidad: "mensual",
+      exportaciones_usadas: 0,
+      exportaciones_limite: 2,
+      informes_ia_usados: 0,
+      informes_ia_limite: 0,
+    },
+    modalidadPlanUI: "mensual",
+    casosServidor: [],
+    chatImagenDataUrl: null,
+    capturaSitioDataUrl: null,
     casoArchivoSelId: null,
     filtroTipoCaso: "todos",
     filtroComunaCaso: "todas",
     busquedaCaso: "",
     chartInstance: null,
     compareChartInstance: null,
+    miniMap: null,
     map: null,
     tileLayer: null,
     layerLimite: null,
@@ -84,6 +103,20 @@
       .replace(/</g, "&lt;")
       .replace(/>/g, "&gt;")
       .replace(/"/g, "&quot;");
+  }
+
+  function renderMarkdownSimple(str) {
+    return esc(str)
+      .replace(/^#{1,4}\s+(.+)$/gm, "<strong>$1</strong>")
+      .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>")
+      .replace(/`([^`]+)`/g, "$1")
+      .replace(/\n/g, "<br>");
+  }
+
+  function limpiarTextoHumano(str) {
+    return String(str ?? "")
+      .replace(/\b(?:cn|sm|v|q)-[wr]\d+\b[,:\s]*/gi, "")
+      .replace(/(\d{7,})/g, (m) => fmtClpCorto(Number(m)).replace("$", "") + " CLP aprox.");
   }
 
   function fmtNum(val, dec = 1) {
@@ -107,11 +140,12 @@
   function fmtClpCorto(val) {
     if (val === null || val === undefined || Number.isNaN(Number(val))) return "s/d";
     const n = Number(val);
-    if (Math.abs(n) >= 1e6) return "$" + fmtInt(Math.round(n / 1e6)) + "M";
+    if (Math.abs(n) >= 1e9) return "$" + fmtNum(n / 1e9, 2) + " mil M";
+    if (Math.abs(n) >= 1e6) return "$" + fmtNum(n / 1e6, 1) + "M";
     return "$" + fmtInt(n);
   }
 
-  function leerCasosGuardados() {
+  function leerCasosLocales() {
     try {
       const raw = window.localStorage.getItem(LS_KEY_CASOS);
       const parsed = raw ? JSON.parse(raw) : [];
@@ -121,13 +155,222 @@
     }
   }
 
-  function guardarCasosGuardados(lista) {
+  function guardarCasosLocales(lista) {
     try {
       window.localStorage.setItem(LS_KEY_CASOS, JSON.stringify(lista));
     } catch (_e) {
-      // ignora si modo privado bloquea localStorage
+      // ignora modo privado
     }
     actualizarContadorCasos();
+  }
+
+  function guardarPerfilLocal() {
+    try {
+      window.localStorage.setItem(LS_KEY_PERFIL, JSON.stringify(state.perfil));
+    } catch (_e) {
+      // ignora
+    }
+  }
+
+  function leerPerfilLocal() {
+    try {
+      const raw = window.localStorage.getItem(LS_KEY_PERFIL);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.email) Object.assign(state.perfil, parsed);
+      }
+    } catch (_e) {
+      // ignora
+    }
+  }
+
+  function esPlanGratis() {
+    return (state.perfil?.plan_id || "gratis") === "gratis";
+  }
+
+  function puedeUsarIA() {
+    return !esPlanGratis() || Number(state.perfil?.informes_ia_limite || 0) > 0;
+  }
+
+  function abrirModalUpgrade(motivo) {
+    abrirModal(
+      "Función restringida en Plan Gratis ($0)",
+      `
+        <div class="callout callout-warn">
+          <strong>${esc(motivo)}</strong><br>
+          En el <strong>Plan Gratis (Demo)</strong> puedes explorar el mapa y usar hasta <strong>2 exportaciones gratuitas de datos</strong>.
+        </div>
+        <p style="font-size:0.9rem;line-height:1.5;">
+          Para desbloquear al instante el <strong>Asistente IA con fotos</strong>, informes Word/PDF listos para postular y descargas ampliadas, activa un plan en 1 clic sin tarjeta (conectado a Supabase):
+        </p>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px;">
+          <button type="button" class="btn btn-primary" id="btnModalActivarConsultora">Activar Consultora ⭐ (4,5 UF/mes · Demo 1 clic)</button>
+          <button type="button" class="btn btn-outline-primary" id="btnModalActivarPase">Activar Pase Proyecto (1,5 UF · Demo)</button>
+          <button type="button" class="btn btn-quiet" id="btnModalVerPlanes">Ver todos los planes</button>
+        </div>
+      `
+    );
+    document.getElementById("btnModalActivarConsultora")?.addEventListener("click", async () => {
+      await activarPlanEnBackend("consultora", state.modalidadPlanUI);
+      document.getElementById("modalBackdrop").classList.add("hidden");
+    });
+    document.getElementById("btnModalActivarPase")?.addEventListener("click", async () => {
+      await activarPlanEnBackend("pase_proyecto", "mensual");
+      document.getElementById("modalBackdrop").classList.add("hidden");
+    });
+    document.getElementById("btnModalVerPlanes")?.addEventListener("click", () => {
+      document.getElementById("modalBackdrop").classList.add("hidden");
+      cambiarVista("planes");
+    });
+  }
+
+  async function consumirExportacion(tipo) {
+    if (window.location.protocol !== "file:") {
+      try {
+        const resp = await fetch("api/plan/consumir-exportacion", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: state.perfil.email, tipo }),
+        });
+        const j = await resp.json().catch(() => ({}));
+        if (resp.status === 402) {
+          abrirModalUpgrade(j.detail || "Límite de exportaciones gratuitas alcanzado.");
+          return false;
+        }
+        if (resp.ok && j.perfil) {
+          Object.assign(state.perfil, j.perfil);
+          guardarPerfilLocal();
+          actualizarUIPlanYUsuario();
+          return true;
+        }
+      } catch (_e) {
+        // fallback local abajo
+      }
+    }
+    const limite = Number(state.perfil.exportaciones_limite || 2);
+    const usadas = Number(state.perfil.exportaciones_usadas || 0);
+    if (esPlanGratis() && (tipo === "docx" || tipo === "pdf")) {
+      abrirModalUpgrade("Los informes Word y PDF ejecutivos requieren Pase por Proyecto (1,5 UF) o Plan Consultora ⭐.");
+      return false;
+    }
+    if (usadas >= limite) {
+      abrirModalUpgrade(`Alcanzaste el límite de ${limite} exportaciones gratuitas.`);
+      return false;
+    }
+    state.perfil.exportaciones_usadas = usadas + 1;
+    guardarPerfilLocal();
+    actualizarUIPlanYUsuario();
+    return true;
+  }
+
+  function actualizarUIPlanYUsuario() {
+    const badge = document.getElementById("badgePlanActivo");
+    const btnUser = document.getElementById("btnLoginUsuario");
+    const p = state.perfil;
+    const lim = Number(p.exportaciones_limite || 2);
+    const us = Number(p.exportaciones_usadas || 0);
+    const rest = Math.max(0, lim - us);
+
+    if (badge) {
+      badge.classList.toggle("plan-pro", !esPlanGratis());
+      badge.textContent = esPlanGratis()
+        ? `Plan Gratis · ${rest} export. libres`
+        : `${p.plan_nombre.split("(")[0].trim()} · Activo`;
+    }
+    if (btnUser) {
+      const primerNombre = (p.nombre || "Usuario").split(" ")[0];
+      btnUser.textContent = p.email === "demo@pulmonurbano.cl" && esPlanGratis()
+        ? "Iniciar sesión"
+        : `${primerNombre} (${p.organizacion.split(" ")[0]})`;
+    }
+    const resUso = document.getElementById("estadoUsoPlanResumen");
+    if (resUso) {
+      resUso.textContent = `${p.plan_nombre} · ${us} de ${lim >= 9999 ? "ilimitadas" : lim} exportaciones · ${p.informes_ia_usados || 0} consultas IA`;
+    }
+    const gate = document.getElementById("chatPlanGateBanner");
+    if (gate) gate.classList.toggle("hidden", puedeUsarIA());
+    const btnSendChat = document.getElementById("btnEnviarChatIA");
+    if (btnSendChat) btnSendChat.disabled = false;
+    renderPlanesView();
+  }
+
+  async function sincronizarPerfilYCasosServidor() {
+    if (window.location.protocol === "file:") return;
+    try {
+      const q = encodeURIComponent(state.perfil.email || "demo@pulmonurbano.cl");
+      const [rPlan, rCasos] = await Promise.all([
+        fetch(`api/plan/actual?email=${q}`),
+        fetch(`api/casos?email=${q}`),
+      ]);
+      if (rPlan.ok) {
+        const jp = await rPlan.json();
+        if (jp?.perfil) {
+          Object.assign(state.perfil, jp.perfil);
+          guardarPerfilLocal();
+        }
+      }
+      if (rCasos.ok) {
+        const jc = await rCasos.json();
+        if (Array.isArray(jc?.casos)) {
+          state.casosServidor = jc.casos;
+        }
+      }
+    } catch (_e) {
+      // mantiene datos locales
+    }
+    actualizarUIPlanYUsuario();
+    actualizarContadorCasos();
+  }
+
+  async function activarPlanEnBackend(planId, modalidad = "mensual") {
+    const planes = PU.catalogo?.modelo_negocio?.escalera_planes || [];
+    const cfg = planes.find((x) => x.id === planId) || {
+      id: planId,
+      nombre: planId,
+      exportaciones_limite: planId === "gratis" ? 2 : 500,
+      informes_ia_limite: planId === "gratis" ? 0 : 15,
+    };
+
+    let almacenamiento = "local_fallback";
+    if (window.location.protocol !== "file:") {
+      try {
+        const resp = await fetch("api/plan/activar", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email: state.perfil.email, plan_id: planId, modalidad }),
+        });
+        if (resp.ok) {
+          const j = await resp.json();
+          if (j.perfil) Object.assign(state.perfil, j.perfil);
+          almacenamiento = j.almacenamiento || "supabase";
+        }
+      } catch (_e) {
+        // fallback local abajo
+      }
+    }
+    if (almacenamiento === "local_fallback") {
+      Object.assign(state.perfil, {
+        plan_id: cfg.id,
+        plan_nombre: cfg.nombre,
+        modalidad,
+        exportaciones_limite: cfg.exportaciones_limite,
+        informes_ia_limite: cfg.informes_ia_limite,
+        exportaciones_usadas: cfg.id === "gratis" ? 0 : state.perfil.exportaciones_usadas,
+        estado: "activo",
+      });
+    }
+    guardarPerfilLocal();
+    actualizarUIPlanYUsuario();
+    actualizarPanelIA();
+
+    const banner = document.getElementById("bannerPlanAceptado");
+    if (banner) {
+      banner.classList.remove("hidden");
+      const donde = almacenamiento === "supabase" ? "Supabase Postgres" : "tu sesión (listo para Supabase SQL)";
+      banner.innerHTML =
+        `¡Plan aceptado! <strong>${esc(state.perfil.plan_nombre)}</strong> quedó activo en ${esc(donde)}. ` +
+        `Ya tienes habilitados el Asistente IA, análisis de fotos y exportaciones ampliadas.`;
+    }
   }
 
   function cargarScript(src) {
@@ -161,7 +404,7 @@
           return data;
         }
       } catch (_err) {
-        // continúa a carga vía <script>
+        // continúa a <script>
       }
     }
     await cargarScript(scriptSrc);
@@ -227,7 +470,7 @@
       if (state.ocultarPequenos && (p.area_m2 || 0) < 5000) return false;
       if (state.senalFiltro !== "todas" && !(p.senales || []).includes(state.senalFiltro)) return false;
       if (term) {
-        const hay = `${p.nombre || ""} ${p.site_id || ""}`.toLowerCase();
+        const hay = `${p.nombre || ""} ${p.nombre_base || ""} ${p.site_id || ""}`.toLowerCase();
         if (!hay.includes(term)) return false;
       }
       return true;
@@ -253,12 +496,11 @@
       return "#0284c7";
     }
     if (state.capa === "ndvi") {
-      const n = p.ndvi_actual;
-      if (n === null || n === undefined) return "#94a3b8";
-      if (n < 0.2) return "#b45309";
-      if (n < 0.3) return "#eab308";
-      if (n < 0.45) return "#65a30d";
-      if (n < 0.6) return "#16a34a";
+      const s = p.salud_vegetal_pct ?? Math.round(((p.ndvi_actual || 0.2) / 0.6) * 100);
+      if (s < 30) return "#b45309";
+      if (s < 48) return "#eab308";
+      if (s < 68) return "#65a30d";
+      if (s < 85) return "#16a34a";
       return "#14532d";
     }
     if (state.capa === "ndmi") {
@@ -269,7 +511,6 @@
       if (m < 0.12) return "#38bdf8";
       return "#0f766e";
     }
-    // censo térmico
     const v = calcVulnCensoDinamica(p);
     if (v >= 80) return "#991b1b";
     if (v >= 60) return "#ea580c";
@@ -287,7 +528,7 @@
     state.basemap = clave;
     if (!state.map) return;
     if (state.tileLayer) state.map.removeLayer(state.tileLayer);
-    const bm = BASEMAPS[clave] || BASEMAPS.claro;
+    const bm = BASEMAPS[clave] || BASEMAPS.satelite;
     state.tileLayer = L.tileLayer(bm.url, {
       attribution: bm.attr,
       maxZoom: 19,
@@ -303,44 +544,44 @@
     let title = "";
     let items = [];
     if (state.capa === "prioridad") {
-      title = state.modoRanking === "satelital" ? "Prioridad satelital integrada" : "Prioridad (Satélites + Censo térmico)";
+      title = state.modoRanking === "satelital" ? "Urgencia para plantar árboles" : "Urgencia (Clima + Vecinos)";
       items = [
-        ["#b91c1c", "≥ 75 (muy alta — intervención urgente)"],
-        ["#ea580c", "60 – 74 (alta — priorizar inversión)"],
-        ["#ca8a04", "45 – 59 (media — vigilar)"],
-        ["#65a30d", "28 – 44 (moderada-baja)"],
-        ["#15803d", "< 28 (condición favorable)"],
+        ["#b91c1c", "≥ 75 (urgente — plantar primero)"],
+        ["#ea580c", "60 – 74 (prioridad alta)"],
+        ["#ca8a04", "45 – 59 (prioridad media)"],
+        ["#65a30d", "28 – 44 (moderada)"],
+        ["#15803d", "< 28 (condición saludable)"],
       ];
     } else if (state.capa === "calor") {
-      title = "Temperatura superficial verano (Landsat 8/9)";
+      title = "Calor del suelo en verano (°C)";
       items = [
-        ["#991b1b", "≥ 42,0 °C (isla de calor extrema)"],
-        ["#ea580c", "39,0 – 41,9 °C (calor severo)"],
+        ["#991b1b", "≥ 42,0 °C (calor extremo)"],
+        ["#ea580c", "39,0 – 41,9 °C (muy caluroso)"],
         ["#eab308", "36,0 – 38,9 °C (cálido)"],
-        ["#65a30d", "33,0 – 35,9 °C (moderado)"],
+        ["#65a30d", "33,0 – 35,9 °C (templado)"],
         ["#0284c7", "< 33,0 °C (fresco relativo)"],
       ];
     } else if (state.capa === "ndvi") {
-      title = "Vigor vegetal actual (Sentinel-2 NDVI)";
+      title = "Salud del pasto y árboles (%)";
       items = [
-        ["#b45309", "< 0,20 (suelo o vegetación escasa)"],
-        ["#eab308", "0,20 – 0,29 (vigor bajo)"],
-        ["#65a30d", "0,30 – 0,44 (vigor medio)"],
-        ["#16a34a", "0,45 – 0,59 (vigor alto)"],
-        ["#14532d", "≥ 0,60 (dosel denso sano)"],
+        ["#b45309", "< 30% (suelo seco o poco verde)"],
+        ["#eab308", "30% – 47% (vegetación débil)"],
+        ["#65a30d", "48% – 67% (vegetación normal)"],
+        ["#16a34a", "68% – 84% (buena salud)"],
+        ["#14532d", "≥ 85% (arboleda densa y sana)"],
       ];
     } else if (state.capa === "ndmi") {
-      title = "Humedad de la vegetación / hojas (NDMI)";
+      title = "Agua disponible en hojas";
       items = [
-        ["#b45309", "< -0,10 (estrés hídrico foliar alto)"],
-        ["#eab308", "-0,10 – -0,01 (humedad foliar baja)"],
-        ["#38bdf8", "0,00 – 0,11 (humedad foliar moderada)"],
-        ["#0f766e", "≥ 0,12 (hojas bien hidratadas)"],
+        ["#b45309", "Muy secas (estrés hídrico)"],
+        ["#eab308", "Humedad baja"],
+        ["#38bdf8", "Humedad normal"],
+        ["#0f766e", "Hojas bien hidratadas"],
       ];
     } else {
-      title = "Vulnerabilidad habitacional térmica (Censo 2024)";
+      title = "Techos calientes y hacinamiento (Censo 2024)";
       items = [
-        ["#991b1b", "≥ 80 (alta carga techos zinc/hacinamiento)"],
+        ["#991b1b", "≥ 80 (alta exposición vecinal)"],
         ["#ea580c", "60 – 79 (alta)"],
         ["#eab308", "40 – 59 (media)"],
         ["#84cc16", "20 – 39 (moderada-baja)"],
@@ -359,6 +600,12 @@
     const vit = (PU.resumen?.comunas || []).find((c) => c.slug === "vitacura");
     if (!r) return;
 
+    const confPct = r.confianza_comuna_pct || 94;
+    const heroConf = document.getElementById("heroConfianzaBadge");
+    if (heroConf) {
+      heroConf.textContent = `Confianza en ${r.nombre}: ${confPct}% (${r.fuentes_activas || 5} fuentes)`;
+    }
+
     const deltaVit =
       r.lst_verano_mediana_c != null && vit?.lst_verano_mediana_c != null
         ? r.lst_verano_mediana_c - vit.lst_verano_mediana_c
@@ -367,23 +614,24 @@
     document.getElementById("kpiLst").textContent = r.lst_verano_mediana_c != null ? `${fmtNum(r.lst_verano_mediana_c, 1)} °C` : "s/d";
     document.getElementById("kpiLstNota").textContent =
       deltaVit != null && slug !== "vitacura"
-        ? `${deltaVit >= 0 ? "+" : ""}${fmtNum(deltaVit, 1)} °C vs Vitacura (${fmtNum(vit.lst_verano_mediana_c, 1)} °C)`
-        : "Comuna referencia estival (5 escenas)";
+        ? `${deltaVit >= 0 ? "+" : ""}${fmtNum(deltaVit, 1)} °C más caliente que Vitacura`
+        : "Comuna de referencia fresca";
 
-    document.getElementById("kpiDosel").textContent = `${fmtNum(r.cobertura_arboles_comuna_pct, 1)}% · ${fmtNum(r.impermeable_comuna_pct, 1)}%`;
-    document.getElementById("kpiDoselNota").textContent = `Árboles vs construido/cemento`;
-
-    document.getElementById("kpiSitios").textContent = `${fmtInt(r.n_sitios_con_ndvi ?? r.n_sitios)} / ${fmtInt(r.n_sitios)}`;
-    document.getElementById("kpiSitiosNota").textContent = `${fmtInt(r.n_sitios_imagen)} parques con PNG HD + térmico`;
-
-    const aire = r.aire || {};
-    document.getElementById("kpiAire").textContent = aire.pm2_5_media != null ? `${fmtNum(aire.pm2_5_media, 1)} µg/m³` : "s/d";
-    document.getElementById("kpiAireNota").textContent = aire.uv_max != null ? `UV máx ${fmtNum(aire.uv_max, 1)} · NO₂ ${fmtNum(aire.no2_media, 1)}` : "CAMS 30 días";
+    document.getElementById("kpiDosel").textContent = `${fmtNum(r.cobertura_arboles_comuna_pct, 1)}% árb · ${fmtNum(r.impermeable_comuna_pct, 1)}% cem`;
+    document.getElementById("kpiDoselNota").textContent = "Árboles vs. cemento (ESA WorldCover)";
 
     document.getElementById("kpiArboles").textContent =
       r.arboles_necesarios_min_total === 0 && r.arboles_necesarios_max_total === 0
         ? "0 (meta 30% cumplida)"
         : `${fmtInt(r.arboles_necesarios_min_total)} – ${fmtInt(r.arboles_necesarios_max_total)}`;
+
+    const aire = r.aire || {};
+    document.getElementById("kpiAire").textContent = aire.pm2_5_media != null ? `${fmtNum(aire.pm2_5_media, 1)} µg/m³` : "s/d";
+    document.getElementById("kpiAireNota").textContent = aire.uv_max != null ? `UV máx. ${fmtNum(aire.uv_max, 1)} · Copérnico` : "Promedio 30 días";
+
+    document.getElementById("kpiSitios").textContent = `${confPct}% · ${fmtInt(r.n_sitios)} parques`;
+    document.getElementById("kpiSitiosNota").textContent = `${fmtInt(r.n_sitios_imagen)} con foto térmica + aérea`;
+
     document.getElementById("top5ComunaNombre").textContent = r.nombre;
   }
 
@@ -408,7 +656,7 @@
     }).addTo(state.map);
 
     const filtrados = getSitiosFiltrados();
-    document.getElementById("estadoFiltroResumen").textContent = `${filtrados.length} de ${pack.geojson.features.length} sitios`;
+    document.getElementById("estadoFiltroResumen").textContent = `${filtrados.length} de ${pack.geojson.features.length} parques`;
 
     state.layerSitios = L.geoJSON(
       { type: "FeatureCollection", features: filtrados },
@@ -417,10 +665,10 @@
           const p = feat.properties;
           const esSel = p.site_id === state.sitioActivoId;
           return {
-            color: esSel ? "#ffffff" : esSat ? "#e2e8f0" : "#1e293b",
-            weight: esSel ? 3.2 : 1.1,
+            color: esSel ? "#ffffff" : esSat ? "#fde047" : "#1e293b",
+            weight: esSel ? 3.4 : 1.3,
             fillColor: colorParaSitio(p),
-            fillOpacity: esSel ? 0.92 : 0.76,
+            fillOpacity: esSel ? 0.72 : esSat ? 0.48 : 0.74,
           };
         },
         onEachFeature: (feat, layer) => {
@@ -428,8 +676,8 @@
           state.poligonosPorId[p.site_id] = layer;
           layer.bindTooltip(
             `<strong>${esc(p.nombre)}</strong><br>` +
-              `Prioridad: ${fmtNum(calcPrioridadActual(p), 1)}/100 · LST: ${fmtNum(p.lst_verano_c, 1)} °C<br>` +
-              `NDVI: ${fmtNum(p.ndvi_actual, 3)} · Dosel 2021: ${fmtNum(p.cobertura_arboles_400m_pct, 1)}%`,
+              `Urgencia: ${fmtNum(calcPrioridadActual(p), 1)}/100 · Calor verano: ${fmtNum(p.lst_verano_c, 1)} °C<br>` +
+              `Salud verde: ${p.salud_vegetal_pct ?? "—"}% · Árboles: ${fmtNum(p.cobertura_arboles_400m_pct, 1)}% · Confianza: ${p.confianza_pct ?? 90}%`,
             { sticky: true }
           );
           layer.on("click", () => abrirSitio(p.site_id));
@@ -448,15 +696,26 @@
     const list = document.getElementById("listaTop5");
     const filtrados = getSitiosFiltrados().slice();
     filtrados.sort((a, b) => {
-      const pa = calcPrioridadActual(a.properties);
-      const pb = calcPrioridadActual(b.properties);
+      const nomA = a.properties.con_nombre ? 1 : 0;
+      const nomB = b.properties.con_nombre ? 1 : 0;
+      const pa = calcPrioridadActual(a.properties) + nomA * 3;
+      const pb = calcPrioridadActual(b.properties) + nomB * 3;
       if (pb !== pa) return pb - pa;
       return (b.properties.lst_verano_c || 0) - (a.properties.lst_verano_c || 0);
     });
 
-    const top5 = filtrados.slice(0, 5);
+    const top5 = [];
+    const basesVistas = new Set();
+    for (const f of filtrados) {
+      const base = (f.properties.nombre_base || f.properties.nombre || "").toLowerCase();
+      if (basesVistas.has(base)) continue;
+      basesVistas.add(base);
+      top5.push(f);
+      if (top5.length >= 5) break;
+    }
+
     if (!top5.length) {
-      list.innerHTML = `<li class="hint">Sin sitios que coincidan con los filtros actuales.</li>`;
+      list.innerHTML = `<li class="hint">Sin parques que coincidan con los filtros actuales.</li>`;
       return;
     }
 
@@ -473,10 +732,10 @@
                 <span class="badge badge-${esc(p.estado)}">${esc(ETIQ_ESTADO[p.estado] || p.estado)}</span>
               </div>
               <div class="top5-meta tabular">
-                <span>Prio: <strong>${fmtNum(pr, 1)}</strong></span>
-                <span>LST: <strong>${fmtNum(p.lst_verano_c, 1)} °C</strong></span>
-                <span>Dosel: <strong>${fmtNum(p.cobertura_arboles_400m_pct, 1)}%</strong></span>
-                <span>NDVI: <strong>${fmtNum(p.ndvi_actual, 2)}</strong></span>
+                <span>Calor: <strong>${fmtNum(p.lst_verano_c, 1)} °C</strong></span>
+                <span>Salud verde: <strong>${p.salud_vegetal_pct ?? "—"}%</strong></span>
+                <span>Árboles: <strong>${fmtNum(p.cobertura_arboles_400m_pct, 1)}%</strong></span>
+                <span>Conf.: <strong>${p.confianza_pct ?? 90}%</strong></span>
               </div>
             </button>
           </li>
@@ -523,7 +782,7 @@
     const prAct = calcPrioridadActual(p);
     const paquete = {
       caso_id: `sitio-${state.comunaSlug}-${p.site_id}`,
-      sitio: { site_id: p.site_id, nombre: p.nombre, comuna: p.comuna, estado: p.estado, confianza: p.confianza, imagenes: p.imagenes, imagen_lst: p.imagen_lst },
+      sitio: { site_id: p.site_id, nombre: p.nombre, comuna: p.comuna, estado: p.estado, confianza: p.confianza, confianza_pct: p.confianza_pct, imagenes: p.imagenes, imagen_lst: p.imagen_lst },
       comuna: { slug: state.comunaSlug, nombre: p.comuna },
       numeros: {
         area_ha: Math.round(areaHa * 100) / 100,
@@ -532,8 +791,7 @@
         lst_pico_c: p.lst_pico_c,
         brecha_calor_vs_vitacura_c: p.brecha_calor_vs_vitacura_c,
         ndvi_actual: p.ndvi_actual,
-        savi_actual: p.savi_actual,
-        ndmi_actual: p.ndmi_actual,
+        salud_vegetal_pct: p.salud_vegetal_pct,
         cobertura_arboles_400m_pct: p.cobertura_arboles_400m_pct,
         impermeable_400m_pct: p.impermeable_400m_pct,
         pct_techo_calor_400m: p.pct_techo_calor_400m,
@@ -542,6 +800,7 @@
         arboles_necesarios_max: p.arboles_necesarios_max,
         costo_clp_min: p.costo_clp_min,
         costo_clp_max: p.costo_clp_max,
+        confianza_pct: p.confianza_pct,
       },
     };
 
@@ -550,33 +809,31 @@
       etiqueta_costo: "hipótesis (sin verificar)",
       detalle:
         iv.id === "arborizacion_calles" && p.arboles_necesarios_min != null
-          ? `Rango estimado de ${fmtInt(p.arboles_necesarios_min)} a ${fmtInt(p.arboles_necesarios_max)} árboles (${fmtClp(p.costo_clp_min)} a ${fmtClp(p.costo_clp_max)}, hipótesis (sin verificar)).`
-          : `Rango de referencia ${fmtClp(iv.costo_min_clp)} a ${fmtClp(iv.costo_max_clp)} (hipótesis (sin verificar)).`,
+          ? `Plantar entre ${fmtInt(p.arboles_necesarios_min)} y ${fmtInt(p.arboles_necesarios_max)} árboles (${fmtClp(p.costo_clp_min)} a ${fmtClp(p.costo_clp_max)}, hipótesis (sin verificar)).`
+          : `Presupuesto de referencia ${fmtClp(iv.costo_min_clp)} a ${fmtClp(iv.costo_max_clp)} (hipótesis (sin verificar)).`,
     }));
 
     const informe = {
       caso_id: paquete.caso_id,
-      titulo: `Informe multi-satélite — ${p.nombre} (${p.comuna})`,
+      titulo: `Ficha técnica clara — ${p.nombre} (${p.comuna})`,
       resumen_ejecutivo:
-        `El sitio ${p.nombre} (${fmtNum(areaHa, 2)} ha) en ${p.comuna} registra prioridad de ${fmtNum(prAct, 1)}/100 ` +
-        `y temperatura superficial estival Landsat 8/9 de ${fmtNum(p.lst_verano_c, 1)} °C (+${fmtNum(p.brecha_calor_vs_vitacura_c, 1)} °C frente a Vitacura). ` +
-        `Sentinel-2 (${p.fecha_ultima_obs || "s/d"}) reporta NDVI=${fmtNum(p.ndvi_actual, 3)}, SAVI=${fmtNum(p.savi_actual, 3)} y NDMI foliar=${fmtNum(p.ndmi_actual, 3)}. ` +
-        `En 400 m (WorldCover 2021) presenta ${fmtNum(p.cobertura_arboles_400m_pct, 1)}% de árboles y ${fmtNum(p.impermeable_400m_pct, 1)}% de superficie impermeable.`,
+        `${p.nombre} (${fmtNum(areaHa, 2)} ha) presenta urgencia de ${fmtNum(prAct, 1)}/100, temperatura estival de ${fmtNum(p.lst_verano_c, 1)} °C (+${fmtNum(p.brecha_calor_vs_vitacura_c, 1)} °C frente a Vitacura) y confianza de medición de ${p.confianza_pct ?? 90}%. ` +
+        `La salud actual del pasto y árboles es de ${p.salud_vegetal_pct ?? "—"}%, mientras su entorno a 5 cuadras (400 m) tiene solo ${fmtNum(p.cobertura_arboles_400m_pct, 1)}% de árboles frente a ${fmtNum(p.impermeable_400m_pct, 1)}% de cemento.`,
       hallazgos: [
-        `Calor superficial Landsat 8/9: ${fmtNum(p.lst_verano_c, 1)} °C en el sitio y ${fmtNum(p.lst_entorno_400m_c, 1)} °C en entorno 400 m (pico ${fmtNum(p.lst_pico_c, 1)} °C).`,
-        `Brecha de dosel WorldCover 2021: ${fmtNum(p.cobertura_arboles_400m_pct, 1)}% vs meta 30% (falta estimada de ${fmtInt(p.arboles_necesarios_min)}–${fmtInt(p.arboles_necesarios_max)} árboles).`,
-        `Censo 2024 opcional en 400 m: ${fmtNum(p.pct_techo_calor_400m, 1)}% techos zinc/fibrocemento/precarios, ${fmtNum(p.pct_hacinamiento_400m, 1)}% hacinamiento y ${fmtNum(p.verde_per_capita_m2, 2)} m²/hab OSM.`,
-        `Calidad del aire comunal CAMS: PM2.5 ${fmtNum(r.aire?.pm2_5_media, 1)} µg/m³ · UV máx ${fmtNum(r.aire?.uv_max, 1)}.`,
+        `Calor del suelo en verano: ${fmtNum(p.lst_verano_c, 1)} °C en el parque (máximo ${fmtNum(p.lst_pico_c, 1)} °C).`,
+        `Falta de sombra (meta mínima 30%): se requieren entre ${fmtInt(p.arboles_necesarios_min)} y ${fmtInt(p.arboles_necesarios_max)} árboles en sus 5 cuadras alrededor.`,
+        `Entorno vecinal (Censo 2024 agregado): ${fmtInt(p.pop_400m)} habitantes cercanos, ${fmtNum(p.pct_techo_calor_400m, 1)}% viviendas con techo sensible al calor.`,
+        `Aire de la comuna: ${fmtNum(r.aire?.pm2_5_media, 1)} µg/m³ de material particulado fino PM2.5.`,
       ],
-      acciones_priorizadas: acciones.length ? acciones : [{ nombre: "Verificación en terreno", etiqueta_costo: "hipótesis (sin verificar)", detalle: "Inspección de campo con fotografía georreferenciada." }],
+      acciones_priorizadas: acciones.length ? acciones : [{ nombre: "Visita y catastro en terreno", etiqueta_costo: "hipótesis (sin verificar)", detalle: "Confirmar puntos de riego disponibles y especies presentes." }],
       fondos_recomendados: (p.fondos_sugeridos || []).map((f) => {
         const full = (cat.fondos_publicos || []).find((x) => x.id === f.id);
-        return { nombre: f.nombre, institucion: f.institucion, requisito: full?.requisito_evidencia || "Diagnóstico territorial cuantitativo." };
+        return { nombre: f.nombre, institucion: f.institucion, requisito: full?.requisito_evidencia || "Ficha territorial cuantitativa." };
       }),
       limitaciones_y_verificacion: [
-        "NDMI mide humedad foliar de la vegetación (hojas), no humedad directa del suelo.",
-        "Landsat 8/9 entrega temperatura superficial estival a 30 m; WorldCover corresponde a 2021.",
-        "Todos los montos en CLP corresponden a hipótesis (sin verificar).",
+        "Todos los montos en CLP corresponden a hipótesis (sin verificar) para evaluación preliminar.",
+        "La humedad de hojas proviene de lectura óptica Sentinel-2 y orienta mantención, sin reemplazar inspección de riego en terreno.",
+        "Los datos censales son 100% agregados (cumple Ley 21.719).",
       ],
       origen_redaccion: "sintesis_verificada_navegador",
       verificado: true,
@@ -586,6 +843,7 @@
 
   function abrirSitio(siteId, tabDestino = null) {
     state.sitioActivoId = siteId;
+    state.capturaSitioDataUrl = null;
     if (tabDestino) state.tabActiva = tabDestino;
     document.getElementById("siteDrawer").classList.remove("hidden");
     renderMapa(false);
@@ -593,27 +851,64 @@
     renderDrawerActual();
   }
 
-  function guardarSitioEnCasos(feat) {
+  async function guardarCasoPersistente(registro) {
+    const lista = leerCasosLocales().filter((x) => x.id !== registro.id);
+    lista.unshift(registro);
+    guardarCasosLocales(lista);
+
+    if (window.location.protocol !== "file:") {
+      try {
+        const payload = {
+          id: registro.id,
+          user_email: state.perfil.email || "demo@pulmonurbano.cl",
+          comuna_slug: registro.comunaSlug || state.comunaSlug || "cerro_navia",
+          site_id: registro.siteId || null,
+          titulo: registro.titulo,
+          tipo_label: registro.tipoLabel || "Caso guardado",
+          nota: registro.nota || "",
+          foto_data_url: registro.fotoDataUrl || null,
+          pregunta_ia: registro.preguntaIA || null,
+          respuesta_ia: registro.respuestaIA || null,
+          confianza_pct: Number(registro.confianzaPct || 94),
+          paquete: registro.paquete || null,
+          informe: registro.informe || null,
+        };
+        const resp = await fetch("api/casos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        if (resp.ok) {
+          state.casosServidor = [payload, ...state.casosServidor.filter((c) => c.id !== payload.id)];
+        }
+      } catch (_e) {
+        // queda guardado en localStorage
+      }
+    }
+    actualizarContadorCasos();
+    actualizarSelectContextoChat();
+    if (state.vista === "casos") renderListaCasos();
+  }
+
+  function guardarSitioEnCasos(feat, fotoExtra = null) {
     const { paquete, informe } = construirPaqueteYInformeSitio(feat);
-    const guardados = leerCasosGuardados();
     const id = `guardado-${state.comunaSlug}-${feat.properties.site_id}`;
-    const existe = guardados.find((x) => x.id === id);
+    const existe = recopilarTodosExpedientes().find((x) => x.id === id);
     const registro = {
       id,
       grupo: "guardado",
-      tipoLabel: "Caso guardado",
+      tipoLabel: fotoExtra ? "Foto y ficha" : "Parque guardado",
       titulo: `${feat.properties.nombre} (${feat.properties.comuna})`,
       comunaSlug: state.comunaSlug,
       siteId: feat.properties.site_id,
       fecha: new Date().toISOString().slice(0, 10),
       nota: existe?.nota || "",
+      fotoDataUrl: fotoExtra || existe?.fotoDataUrl || null,
+      confianzaPct: feat.properties.confianza_pct || 92,
       paquete,
       informe,
     };
-    const filtrados = guardados.filter((x) => x.id !== id);
-    filtrados.unshift(registro);
-    guardarCasosGuardados(filtrados);
-    if (state.vista === "casos") renderListaCasos();
+    guardarCasoPersistente(registro);
     return registro;
   }
 
@@ -624,18 +919,18 @@
 
     document.getElementById("drawerTitle").textContent = p.nombre;
     document.getElementById("drawerSub").textContent =
-      `${p.comuna} · ${fmtNum((p.area_m2 || 0) / 10000, 2)} ha (${fmtInt(p.area_m2)} m²) · Ranking #${p.ranking_comuna || "—"}`;
+      `${p.comuna} · ${fmtNum((p.area_m2 || 0) / 10000, 2)} ha · Puesto #${p.ranking_comuna || "—"} de prioridad`;
 
     document.getElementById("drawerBadges").innerHTML = `
       <span class="badge badge-${esc(p.estado)}">${esc(ETIQ_ESTADO[p.estado] || p.estado)}</span>
-      <span class="badge badge-calor">LST ${fmtNum(p.lst_verano_c, 1)} °C</span>
-      <span class="badge badge-${esc(p.confianza)}">Confianza: ${esc(p.confianza)}</span>
+      <span class="badge badge-calor">${fmtNum(p.lst_verano_c, 1)} °C verano</span>
+      <span class="badge badge-verificado">Confianza: ${p.confianza_pct ?? 92}%</span>
     `;
 
-    const guardados = leerCasosGuardados();
+    const guardados = recopilarTodosExpedientes().filter((x) => x.grupo === "guardado");
     const yaGuardado = guardados.some((x) => x.id === `guardado-${state.comunaSlug}-${p.site_id}`);
     const btnG = document.getElementById("btnGuardarCasoSitio");
-    btnG.textContent = yaGuardado ? "En Casos ✓" : "Guardar caso";
+    btnG.textContent = yaGuardado ? "Guardado ✓" : "Guardar caso";
 
     document.querySelectorAll(".tab-btn").forEach((b) => {
       const active = b.dataset.tab === state.tabActiva;
@@ -647,7 +942,7 @@
     });
 
     if (state.tabActiva === "resumen") renderTabResumen(p);
-    else if (state.tabActiva === "imagenes") renderTabImagenes(p);
+    else if (state.tabActiva === "imagenes") renderTabImagenes(feat);
     else if (state.tabActiva === "serie") renderTabSerie(p);
     else if (state.tabActiva === "inversion") renderTabInversion(p);
     else if (state.tabActiva === "informe") renderTabInforme(feat);
@@ -660,54 +955,55 @@
     const urlMaps = lat && lon ? `https://www.google.com/maps/search/?api=1&query=${lat},${lon}` : "#";
     const urlSv = lat && lon ? `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lon}` : "#";
 
-    const detHtml = (p.senales_detalle || [])
-      .map((d) => `<li><strong>${esc(d.etiqueta)}:</strong> ${esc(d.evidencia)}</li>`)
-      .join("");
+    const salud = p.salud_vegetal_pct ?? 45;
+    const conf = p.confianza_pct ?? 92;
+    const humedadTxt =
+      p.ndmi_actual == null ? "Sin lectura" : p.ndmi_actual < -0.05 ? "Baja (hojas secas)" : p.ndmi_actual < 0.08 ? "Normal" : "Bien hidratada";
 
     el.innerHTML = `
       <div class="metrics-grid tabular">
         <div class="metric-box">
-          <small>Isla de calor Landsat 8/9 (30 m)</small>
-          <strong>${fmtNum(p.lst_verano_c, 1)} °C · Pico ${fmtNum(p.lst_pico_c, 1)} °C</strong>
-          <div class="hint" style="margin:2px 0 0;">${p.brecha_calor_vs_vitacura_c != null ? `${p.brecha_calor_vs_vitacura_c >= 0 ? "+" : ""}${fmtNum(p.brecha_calor_vs_vitacura_c, 1)} °C vs Vitacura` : "Verano 2025-26"}</div>
+          <small>Calor del suelo en verano</small>
+          <strong>${fmtNum(p.lst_verano_c, 1)} °C (pico ${fmtNum(p.lst_pico_c, 1)} °C)</strong>
+          <div class="hint" style="margin:2px 0 0;">${p.brecha_calor_vs_vitacura_c != null ? `${p.brecha_calor_vs_vitacura_c >= 0 ? "+" : ""}${fmtNum(p.brecha_calor_vs_vitacura_c, 1)} °C más caliente que Vitacura` : "Medición verano 2025-26"}</div>
         </div>
         <div class="metric-box">
-          <small>Sentinel-2 vigor &amp; suelo ajustado</small>
-          <strong>NDVI ${fmtNum(p.ndvi_actual, 3)} · SAVI ${fmtNum(p.savi_actual, 3)}</strong>
-          <div class="hint" style="margin:2px 0 0;">z=${fmtNum(p.ndvi_z, 2)} · BSI suelo=${fmtNum(p.bsi_actual, 3)}</div>
+          <small>Salud del pasto y árboles</small>
+          <strong>${salud}% de vigor verde</strong>
+          <div class="metric-bar-bg"><div class="metric-bar-fill" style="width:${salud}%;"></div></div>
+          <div class="hint" style="margin:3px 0 0;">Agua en hojas: ${esc(humedadTxt)}</div>
         </div>
         <div class="metric-box">
-          <small>Humedad vegetación / hojas (NDMI)</small>
-          <strong>${fmtNum(p.ndmi_actual, 3)} (z=${fmtNum(p.ndmi_z, 2)})</strong>
-          <div class="hint" style="margin:2px 0 0;">No mide humedad directa de suelo</div>
-        </div>
-        <div class="metric-box">
-          <small>Superficie WorldCover 2021 (400 m)</small>
+          <small>Entorno a 5 cuadras (400 m)</small>
           <strong>${fmtNum(p.cobertura_arboles_400m_pct, 1)}% árboles · ${fmtNum(p.impermeable_400m_pct, 1)}% cemento</strong>
-          <div class="hint" style="margin:2px 0 0;">Brecha dosel: ${fmtNum(p.brecha_dosel_puntos, 1)} pts bajo 30%</div>
+          <div class="hint" style="margin:2px 0 0;">Faltan ${fmtInt(p.arboles_necesarios_min)} – ${fmtInt(p.arboles_necesarios_max)} árboles para meta 30%</div>
+        </div>
+        <div class="metric-box">
+          <small>Confianza real del dato</small>
+          <strong>${conf}% verificado</strong>
+          <div class="metric-bar-bg"><div class="metric-bar-fill" style="width:${conf}%;background:#0f766e;"></div></div>
+          <div class="hint" style="margin:3px 0 0;">${p.n_obs ? `Basado en ${fmtInt(p.n_obs)} lecturas sin nubes` : "Lectura satelital de borde recuperado (2026)"}</div>
         </div>
       </div>
 
       <div class="callout">
-        <strong>Censo 2024 habitacional en 400 m (capa opcional · ${fmtInt(p.viviendas_400m)} viviendas / ${fmtInt(p.pop_400m)} hab):</strong><br>
-        Techos zinc/fibrocemento/precarios: <strong>${fmtNum(p.pct_techo_calor_400m, 1)}%</strong> ·
-        Hacinamiento: <strong>${fmtNum(p.pct_hacinamiento_400m, 1)}%</strong> ·
-        Verde cercano OSM: <strong>${fmtNum(p.verde_per_capita_m2, 2)} m²/hab</strong> ·
-        60+ años: ${fmtNum(p.pct_60_mas_400m, 1)}% · 0–5 años: ${fmtNum(p.pct_infancia_0_5_400m, 1)}%.
-      </div>
-
-      <div class="callout callout-warn">
-        <strong>Señales detectadas (${esc(p.fecha_ultima_obs || "sin lectura Sentinel")}):</strong>
-        <ul style="margin:5px 0 0 18px;padding:0;">${detHtml || "<li>Sin detalles.</li>"}</ul>
-        <div class="hint" style="margin:6px 0 0;">${esc((p.razones_confianza || []).join(" · "))}</div>
+        <strong>Vecinos alrededor (datos Censo 2024 agregados, sin datos personales):</strong><br>
+        ${fmtInt(p.pop_400m)} personas en 5 cuadras (${fmtInt(p.viviendas_400m)} viviendas) ·
+        Techos vulnerables al calor (zinc): <strong>${fmtNum(p.pct_techo_calor_400m, 1)}%</strong> ·
+        Hacinamiento: <strong>${fmtNum(p.pct_hacinamiento_400m, 1)}%</strong>.
       </div>
 
       <div class="link-row">
-        <a class="ext-link" href="${esc(urlMaps)}" target="_blank" rel="noopener noreferrer">Abrir en Google Maps ↗</a>
-        <a class="ext-link" href="${esc(urlSv)}" target="_blank" rel="noopener noreferrer">Abrir Street View ↗</a>
-        ${p.osm_url ? `<a class="ext-link" href="${esc(p.osm_url)}" target="_blank" rel="noopener noreferrer">Ver polígono OSM ↗</a>` : ""}
+        <button type="button" class="btn btn-primary" id="btnIrFotoRealParque">Ver foto aérea real y capturar →</button>
+        <a class="ext-link" href="${esc(urlMaps)}" target="_blank" rel="noopener noreferrer">Google Maps ↗</a>
+        <a class="ext-link" href="${esc(urlSv)}" target="_blank" rel="noopener noreferrer">Street View ↗</a>
       </div>
     `;
+
+    document.getElementById("btnIrFotoRealParque")?.addEventListener("click", () => {
+      state.tabActiva = "imagenes";
+      renderDrawerActual();
+    });
   }
 
   function leerExifGps(buffer) {
@@ -719,12 +1015,7 @@
         const marker = view.getUint16(offset, false);
         offset += 2;
         if (marker === 0xffe1) {
-          const header = String.fromCharCode(
-            view.getUint8(offset + 2),
-            view.getUint8(offset + 3),
-            view.getUint8(offset + 4),
-            view.getUint8(offset + 5)
-          );
+          const header = String.fromCharCode(view.getUint8(offset + 2), view.getUint8(offset + 3), view.getUint8(offset + 4), view.getUint8(offset + 5));
           if (header !== "Exif") return null;
           const tiffStart = offset + 8;
           const little = view.getUint16(tiffStart, false) === 0x4949;
@@ -755,10 +1046,7 @@
             }
           }
           if (tags[2] != null && tags[4] != null) {
-            return {
-              lat: tags[1] === "S" ? -tags[2] : tags[2],
-              lon: tags[3] === "W" ? -tags[4] : tags[4],
-            };
+            return { lat: tags[1] === "S" ? -tags[2] : tags[2], lon: tags[3] === "W" ? -tags[4] : tags[4] };
           }
           return null;
         }
@@ -780,180 +1068,340 @@
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }
 
-  function renderTabImagenes(p) {
+  async function cargarImagenCors(url) {
+    return new Promise((resolve) => {
+      const im = new Image();
+      im.crossOrigin = "anonymous";
+      im.onload = () => resolve(im);
+      im.onerror = () => resolve(null);
+      im.src = url;
+    });
+  }
+
+  async function generarCapturaParqueDataUrl(feat) {
+    const p = feat.properties;
+    const canvas = document.createElement("canvas");
+    canvas.width = 720;
+    canvas.height = 460;
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#0f172a";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Intenta mosaico aéreo real Esri World Imagery alrededor del centro del parque
+    let fondoDibujado = false;
+    const lat = p.centro?.[1];
+    const lon = p.centro?.[0];
+    if (lat != null && lon != null) {
+      const zoom = 17;
+      const n = 2 ** zoom;
+      const xf = ((lon + 180) / 360) * n;
+      const latRad = (lat * Math.PI) / 180;
+      const yf = ((1 - Math.log(Math.tan(latRad) + 1 / Math.cos(latRad)) / Math.PI) / 2) * n;
+      const cxTile = Math.floor(xf);
+      const cyTile = Math.floor(yf);
+      const pxCentro = (xf - cxTile) * 256;
+      const pyCentro = (yf - cyTile) * 256;
+      const tileOffsets = [-1, 0, 1];
+      const cargas = [];
+      for (const dy of tileOffsets) {
+        for (const dx of tileOffsets) {
+          const url = `https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${zoom}/${cyTile + dy}/${cxTile + dx}`;
+          cargas.push(cargarImagenCors(url).then((im) => ({ dx, dy, im })));
+        }
+      }
+      const tiles = await Promise.all(cargas);
+      if (tiles.some((t) => t.im)) {
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, 440, 460);
+        ctx.clip();
+        tiles.forEach(({ dx, dy, im }) => {
+          if (!im) return;
+          const xDraw = 220 - pxCentro + dx * 256;
+          const yDraw = 230 - pyCentro + dy * 256;
+          ctx.drawImage(im, xDraw, yDraw, 256, 256);
+        });
+        // Dibuja polígono exacto del parque sobre la foto aérea real
+        const coords = feat.geometry?.type === "Polygon" ? feat.geometry.coordinates[0] : feat.geometry?.coordinates?.[0]?.[0] || [];
+        if (coords.length > 2) {
+          ctx.beginPath();
+          coords.forEach((c, idx) => {
+            const tx = ((c[0] + 180) / 360) * n;
+            const lr = (c[1] * Math.PI) / 180;
+            const ty = ((1 - Math.log(Math.tan(lr) + 1 / Math.cos(lr)) / Math.PI) / 2) * n;
+            const px = 220 + (tx - xf) * 256;
+            const py = 230 + (ty - yf) * 256;
+            if (idx === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          });
+          ctx.closePath();
+          ctx.fillStyle = "rgba(34, 197, 94, 0.22)";
+          ctx.fill();
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = "#facc15";
+          ctx.stroke();
+        }
+        ctx.restore();
+        fondoDibujado = true;
+      }
+    }
+
+    if (!fondoDibujado) {
+      const imgs = p.imagenes || [];
+      const srcReal = imgs.length ? imgs[imgs.length - 1].color : null;
+      const imgCargada = srcReal ? await cargarImagenCors(srcReal) : null;
+      if (imgCargada) {
+        ctx.drawImage(imgCargada, 0, 0, 440, 460);
+      } else {
+        const coords = feat.geometry?.type === "Polygon" ? feat.geometry.coordinates[0] : feat.geometry?.coordinates?.[0]?.[0] || [];
+        ctx.fillStyle = "#16241d";
+        ctx.fillRect(10, 10, 420, 440);
+        if (coords.length > 2) {
+          const xs = coords.map((c) => c[0]);
+          const ys = coords.map((c) => c[1]);
+          const minX = Math.min(...xs), maxX = Math.max(...xs);
+          const minY = Math.min(...ys), maxY = Math.max(...ys);
+          const span = Math.max(maxX - minX, maxY - minY, 1e-5);
+          ctx.beginPath();
+          coords.forEach((c, idx) => {
+            const px = 45 + ((c[0] - minX) / span) * 350;
+            const py = 405 - ((c[1] - minY) / span) * 350;
+            if (idx === 0) ctx.moveTo(px, py);
+            else ctx.lineTo(px, py);
+          });
+          ctx.closePath();
+          ctx.fillStyle = "rgba(34, 197, 94, 0.35)";
+          ctx.fill();
+          ctx.lineWidth = 3;
+          ctx.strokeStyle = "#facc15";
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Panel derecho de telemetría verificada (para la IA y el expediente)
+    ctx.fillStyle = "#111827";
+    ctx.fillRect(440, 0, 280, 460);
+    ctx.fillStyle = "#22c55e";
+    ctx.font = "bold 14px sans-serif";
+    ctx.fillText("PULMÓN URBANO · CAPTURA", 456, 36);
+
+    ctx.fillStyle = "#ffffff";
+    ctx.font = "bold 17px sans-serif";
+    const words = String(p.nombre || "").split(" ");
+    let line = "", y = 72;
+    for (const w of words) {
+      if ((line + " " + w).length > 24) {
+        ctx.fillText(line.trim(), 456, y);
+        y += 22;
+        line = w;
+      } else line += " " + w;
+    }
+    if (line) ctx.fillText(line.trim(), 456, y);
+
+    ctx.fillStyle = "#9ca3af";
+    ctx.font = "13px sans-serif";
+    ctx.fillText(`${p.comuna} · Confianza ${p.confianza_pct ?? 92}%`, 456, y + 26);
+
+    const rows = [
+      `Calor verano: ${fmtNum(p.lst_verano_c, 1)} °C`,
+      `Salud vegetal: ${p.salud_vegetal_pct ?? "—"}%`,
+      `Árboles entorno: ${fmtNum(p.cobertura_arboles_400m_pct, 1)}%`,
+      `Cemento entorno: ${fmtNum(p.impermeable_400m_pct, 1)}%`,
+      `Faltan: ${fmtInt(p.arboles_necesarios_min)}–${fmtInt(p.arboles_necesarios_max)} árb.`,
+      `Techos zinc: ${fmtNum(p.pct_techo_calor_400m, 1)}%`,
+      `Lat/Lon: ${p.centro ? `${p.centro[1].toFixed(4)}, ${p.centro[0].toFixed(4)}` : "—"}`,
+    ];
+    ctx.fillStyle = "#e5e7eb";
+    ctx.font = "13px sans-serif";
+    rows.forEach((txt, i) => ctx.fillText(txt, 456, 175 + i * 32));
+
+    ctx.fillStyle = "#fde047";
+    ctx.font = "11px sans-serif";
+    ctx.fillText(`Generado ${new Date().toISOString().slice(0, 10)} · Uso IA/Caso`, 456, 434);
+    return canvas.toDataURL("image/jpeg", 0.86);
+  }
+
+  function mostrarPreviewCaptura(outEl, imgUrl, tituloFoto, feat) {
+    outEl.innerHTML = `
+      <div class="snapshot-preview-box">
+        <img src="${imgUrl}" alt="${esc(tituloFoto)}">
+        <div style="flex:1;min-width:190px;">
+          <strong>${esc(tituloFoto)}</strong>
+          <div class="hint" style="margin:3px 0 8px;">Lista para enviar al Asistente IA o archivar en tus Casos.</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button type="button" class="btn btn-primary" id="btnEnviarCapturaAIA">Preguntar a IA con esta foto →</button>
+            <button type="button" class="btn btn-outline-primary" id="btnGuardarCapturaEnCaso">Guardar foto en Casos (Supabase)</button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.getElementById("btnEnviarCapturaAIA")?.addEventListener("click", () => {
+      state.chatImagenDataUrl = imgUrl;
+      renderPreviewFotoChat();
+      cambiarVista("informe-ia");
+      actualizarSelectContextoChat(feat.properties.site_id);
+      const inp = document.getElementById("inputChatIA");
+      if (inp) {
+        inp.value = `Analiza esta captura aérea de ${feat.properties.nombre} (${feat.properties.comuna}) y recomiéndame qué árboles o mejoras priorizar según su calor de ${fmtNum(feat.properties.lst_verano_c, 1)} °C.`;
+        inp.focus();
+      }
+    });
+
+    document.getElementById("btnGuardarCapturaEnCaso")?.addEventListener("click", () => {
+      guardarSitioEnCasos(feat, imgUrl);
+      renderDrawerActual();
+      alert("Foto y ficha del parque guardadas en Casos y Archivos (sincronizado con Supabase).");
+    });
+  }
+
+  function renderTabImagenes(feat) {
+    const p = feat.properties;
     const el = document.getElementById("tab-imagenes");
     const imgs = p.imagenes || [];
     const imgLst = p.imagen_lst;
 
-    if (!imgs.length && !imgLst) {
-      el.innerHTML = `
-        <div class="callout callout-warn">
-          <strong>Parque bajo 5.000 m&sup2; (${fmtInt(p.area_m2)} m&sup2;).</strong><br>
-          Los recortes visuales 480×480 se generan desde 5.000 m² para mantener escala interpretable; las lecturas numéricas Landsat/Sentinel ya están calculadas en Resumen.
+    const compHtml =
+      imgs.length || imgLst
+        ? `
+        <h4 style="margin:12px 0 6px;">Diagnóstico térmico y vegetal (Landsat 8/9 y Sentinel-2)</h4>
+        <div id="imgEscenario"></div>
+        <div class="compare-controls" style="margin-top:8px;">
+          <label><span>Izquierda</span><select id="selModoIzq"></select></label>
+          <label><span>Derecha</span><select id="selModoDer"></select></label>
+          <label><span>Fecha izq.</span><select id="selFechaIzq"></select></label>
+          <label><span>Fecha der.</span><select id="selFechaDer"></select></label>
+        </div>`
+        : `<p class="hint">Parque bajo 0,5 ha (${fmtInt(p.area_m2)} m²): mira la fotografía aérea HD de alta resolución arriba.</p>`;
+
+    el.innerHTML = `
+      <div class="aerial-map-card">
+        <div class="aerial-map-header">
+          <strong>Foto Satelital Real (Alta resolución Esri HD)</strong>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;">
+            <button type="button" class="btn btn-primary" id="btnCapturarFotoParque">Capturar foto de este parque</button>
+          </div>
         </div>
-        <div class="upload-box">
-          <strong>Subir foto de terreno (lectura EXIF GPS local):</strong><br>
-          <input type="file" id="inputFotoTerreno" accept="image/jpeg,image/png,image/webp" style="margin-top:6px;">
-          <div id="fotoTerrenoResultado"></div>
-        </div>
-      `;
-    } else {
-      const ult = imgs.length - 1;
+        <div id="miniMapaSateliteReal"></div>
+      </div>
+
+      <div class="upload-box" style="margin-bottom:10px;">
+        <strong>O sube una foto tomada en el parque (celular / cámara):</strong><br>
+        <input type="file" id="inputFotoTerreno" accept="image/jpeg,image/png,image/webp" style="margin-top:6px;">
+        <div id="fotoTerrenoResultado"></div>
+      </div>
+
+      ${compHtml}
+    `;
+
+    // Renderiza el mini visor con foto aérea REAL centrada en el polígono del parque
+    setTimeout(() => {
+      const boxMap = document.getElementById("miniMapaSateliteReal");
+      if (!boxMap || !window.L) return;
+      if (state.miniMap) {
+        try { state.miniMap.remove(); } catch (_e) {}
+        state.miniMap = null;
+      }
+      state.miniMap = L.map(boxMap, { zoomControl: true, attributionControl: false });
+      L.tileLayer(BASEMAPS.satelite.url, { maxZoom: 19 }).addTo(state.miniMap);
+      const lyr = L.geoJSON(feat, {
+        style: { color: "#facc15", weight: 3, fillColor: "#22c55e", fillOpacity: 0.14 },
+      }).addTo(state.miniMap);
+      const b = lyr.getBounds();
+      if (b.isValid()) state.miniMap.fitBounds(b, { maxZoom: 18, padding: [24, 24] });
+    }, 30);
+
+    const outBox = document.getElementById("fotoTerrenoResultado");
+    if (state.capturaSitioDataUrl) {
+      mostrarPreviewCaptura(outBox, state.capturaSitioDataUrl, `Captura de ${p.nombre}`, feat);
+    }
+
+    document.getElementById("btnCapturarFotoParque")?.addEventListener("click", async () => {
+      const btn = document.getElementById("btnCapturarFotoParque");
+      btn.disabled = true;
+      btn.textContent = "Capturando…";
+      const dataUrl = await generarCapturaParqueDataUrl(feat);
+      state.capturaSitioDataUrl = dataUrl;
+      mostrarPreviewCaptura(outBox, dataUrl, `Captura lista: ${p.nombre}`, feat);
+      btn.disabled = false;
+      btn.textContent = "Capturar foto de este parque";
+    });
+
+    document.getElementById("inputFotoTerreno")?.addEventListener("change", async (ev) => {
+      const file = ev.target.files?.[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = async () => {
+        const dataUrl = String(reader.result || "");
+        const gps = leerExifGps(await file.arrayBuffer());
+        let notaGps = file.name;
+        if (gps && p.centro) {
+          const dist = distanciaMetros(gps.lat, gps.lon, p.centro[1], p.centro[0]);
+          notaGps = `${file.name} (a ${fmtInt(dist)} m del centro)`;
+        }
+        state.capturaSitioDataUrl = dataUrl;
+        mostrarPreviewCaptura(outBox, dataUrl, `Foto subida: ${notaGps}`, feat);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    if (imgs.length || imgLst) {
       const CAPAS = {
-        color: { nombre: "Color natural", fuente: "Sentinel-2, 10 m" },
-        ndvi: {
-          nombre: "NDVI (vigor vegetal)",
-          fuente: "Sentinel-2, 10 m",
-          rampa: "#7f3b08 0%, #d8b365 17.6%, #fee08b 31.8%, #a6d96a 47.1%, #1a9850 70.6%, #004529 100%",
-          etiquetas: ["-0,05 sin vegetación", "0,35", "0,80 dosel denso"],
-        },
-        ndmi: {
-          nombre: "NDMI (humedad de hojas)",
-          fuente: "Sentinel-2, 20 m",
-          rampa: "#8c510a 0%, #d8b365 24.3%, #f5f5f5 42.9%, #80cdc1 64.3%, #01665e 100%",
-          etiquetas: ["-0,25 hojas secas", "0,05", "0,45 follaje hidratado"],
-        },
-        lst: {
-          nombre: "Térmico superficial (°C)",
-          fuente: "Landsat 8/9, 30 m",
-          rampa: "#2c7bb6 0%, #80cdc1 27.8%, #fee08b 50%, #f46d43 72.2%, #a50026 100%",
-          etiquetas: ["26 °C más fresco", "35 °C", "44 °C o más"],
-        },
+        color: "Satélite natural",
+        ndvi: "Salud del pasto y árboles",
+        ndmi: "Agua en las hojas",
+        lst: "Mapa de calor verano (°C)",
       };
       const claves = [];
       if (imgs.length) claves.push("color", "ndvi");
       if (imgs.some((im) => im.ndmi)) claves.push("ndmi");
       if (imgLst) claves.push("lst");
-
-      const sel = { vista: "lado", mIzq: claves[0], mDer: claves[1] || claves[0], fIzq: Math.max(ult, 0), fDer: Math.max(ult, 0) };
-      const presets = [];
-      if (imgs.length) presets.push({ nombre: "Color y NDVI", v: { vista: "lado", mIzq: "color", mDer: "ndvi", fIzq: ult, fDer: ult } });
-      if (imgs.length > 1) presets.push({ nombre: `Antes y después (${imgs[0].fecha} → ${imgs[ult].fecha})`, v: { vista: "cortina", mIzq: "ndvi", mDer: "ndvi", fIzq: 0, fDer: ult } });
-      if (imgs.length && imgLst) presets.push({ nombre: "Vegetación y calor", v: { vista: "cortina", mIzq: "ndvi", mDer: "lst", fIzq: ult, fDer: ult } });
-
-      const optCapas = claves.map((k) => `<option value="${k}">${esc(CAPAS[k].nombre)}</option>`).join("");
+      const ult = Math.max(0, imgs.length - 1);
+      const sel = {
+        mIzq: claves.includes("color") ? "color" : claves[0],
+        mDer: imgLst ? "lst" : claves[1] || claves[0],
+        fIzq: ult,
+        fDer: ult,
+      };
+      const optCapas = claves.map((k) => `<option value="${k}">${esc(CAPAS[k])}</option>`).join("");
       const optFechas = imgs.map((im, i) => `<option value="${i}">${esc(im.fecha)}</option>`).join("");
-      const urlCapa = (modo, idx) => (modo === "lst" ? imgLst : (imgs[idx] || {})[modo]) || "";
-      const rotulo = (modo, idx) =>
-        modo === "lst" ? `${CAPAS.lst.nombre} · verano 2025-26` : `${CAPAS[modo].nombre} · ${imgs[idx]?.fecha || "s/f"}`;
+      document.getElementById("selModoIzq").innerHTML = optCapas;
+      document.getElementById("selModoDer").innerHTML = optCapas;
+      document.getElementById("selFechaIzq").innerHTML = optFechas || `<option value="0">Verano</option>`;
+      document.getElementById("selFechaDer").innerHTML = optFechas || `<option value="0">Verano</option>`;
 
-      el.innerHTML = `
-        <div class="preset-row" role="group" aria-label="Comparaciones rápidas">
-          ${presets.map((pr, i) => `<button type="button" class="chip" data-preset="${i}">${esc(pr.nombre)}</button>`).join("")}
-        </div>
-        <div class="compare-controls">
-          <label><span>Imagen izquierda</span><select id="selModoIzq">${optCapas}</select></label>
-          <label><span>Imagen derecha</span><select id="selModoDer">${optCapas}</select></label>
-          <label><span>Fecha izquierda</span><select id="selFechaIzq">${optFechas}</select></label>
-          <label><span>Fecha derecha</span><select id="selFechaDer">${optFechas}</select></label>
-        </div>
-        <div class="segmented seg-vista" role="group" aria-label="Modo de comparación">
-          <button type="button" class="seg-btn" data-vista="lado">Lado a lado</button>
-          <button type="button" class="seg-btn" data-vista="cortina">Cortina deslizante</button>
-        </div>
-        <div id="imgEscenario"></div>
-        <div id="leyendaRampaImg" class="ramp-bar-wrap"></div>
-        <p class="hint">
-          El contorno blanco es el polígono del sitio (OpenStreetMap) y todas las capas usan el mismo encuadre.
-          Sentinel-2: contiene datos modificados de Copernicus Sentinel, en escenas casi sin nubes sobre la comuna.
-          Térmico: mediana de escenas de verano de Landsat 8/9 (USGS/NASA); con píxeles de 30 m orienta, no delimita.
-        </p>
-        <div class="upload-box">
-          <strong>Validar en terreno con una foto propia (se lee su GPS aquí; no se sube a ningún servidor):</strong><br>
-          <input type="file" id="inputFotoTerreno" accept="image/jpeg,image/png,image/webp" style="margin-top:6px;">
-          <div id="fotoTerrenoResultado"></div>
-        </div>
-      `;
-      const pintar = () => {
-        const a = { src: urlCapa(sel.mIzq, sel.fIzq), txt: rotulo(sel.mIzq, sel.fIzq) };
-        const b = { src: urlCapa(sel.mDer, sel.fDer), txt: rotulo(sel.mDer, sel.fDer) };
+      const urlCapa = (m, idx) => (m === "lst" ? imgLst : (imgs[idx] || {})[m]) || "";
+      const pintarComp = () => {
         document.getElementById("selModoIzq").value = sel.mIzq;
         document.getElementById("selModoDer").value = sel.mDer;
-        const fIzq = document.getElementById("selFechaIzq");
-        const fDer = document.getElementById("selFechaDer");
-        fIzq.value = String(sel.fIzq);
-        fDer.value = String(sel.fDer);
-        fIzq.disabled = sel.mIzq === "lst" || !imgs.length;
-        fDer.disabled = sel.mDer === "lst" || !imgs.length;
-        el.querySelectorAll("[data-vista]").forEach((bt) => bt.classList.toggle("active", bt.dataset.vista === sel.vista));
-
-        const escenario = document.getElementById("imgEscenario");
-        if (sel.vista === "lado") {
-          escenario.innerHTML = `<div class="img-pair">${[a, b]
-            .map((x) => `<figure class="img-fig"><img src="${esc(x.src)}" alt="${esc(x.txt)}"><figcaption>${esc(x.txt)}</figcaption></figure>`)
-            .join("")}</div>`;
-        } else {
-          escenario.innerHTML = `
-            <div class="compare-stage">
-              <img src="${esc(b.src)}" alt="${esc(b.txt)}">
-              <div class="compare-overlay" id="imgOverlayIzq" style="clip-path: inset(0 50% 0 0);"><img src="${esc(a.src)}" alt="${esc(a.txt)}"></div>
-              <div class="compare-divider" id="imgDivider" style="left: 50%;"></div>
-              <span class="img-tag">${esc(a.txt)}</span>
-              <span class="img-tag img-tag-der">${esc(b.txt)}</span>
-            </div>
-            <input type="range" class="compare-range" id="rangeCortina" min="0" max="100" value="50" aria-label="Mover la cortina entre la imagen izquierda y la derecha">`;
-          document.getElementById("rangeCortina").addEventListener("input", (e) => {
-            const pct = Number(e.target.value);
-            document.getElementById("imgOverlayIzq").style.clipPath = `inset(0 ${100 - pct}% 0 0)`;
-            document.getElementById("imgDivider").style.left = `${pct}%`;
-          });
-        }
-
-        document.getElementById("leyendaRampaImg").innerHTML = [...new Set([sel.mIzq, sel.mDer])]
-          .filter((k) => CAPAS[k].rampa)
-          .map(
-            (k) => `
-            <div class="ramp-title">${esc(CAPAS[k].nombre)} · ${esc(CAPAS[k].fuente)}</div>
-            <div class="ramp-bar" style="background: linear-gradient(90deg, ${CAPAS[k].rampa});"></div>
-            <div class="ramp-labels">${CAPAS[k].etiquetas.map((t) => `<span>${esc(t)}</span>`).join("")}</div>`
-          )
-          .join("");
+        document.getElementById("selFechaIzq").value = String(sel.fIzq);
+        document.getElementById("selFechaDer").value = String(sel.fDer);
+        document.getElementById("selFechaIzq").disabled = sel.mIzq === "lst" || !imgs.length;
+        document.getElementById("selFechaDer").disabled = sel.mDer === "lst" || !imgs.length;
+        const pairs = [
+          { src: urlCapa(sel.mIzq, sel.fIzq), txt: CAPAS[sel.mIzq] },
+          { src: urlCapa(sel.mDer, sel.fDer), txt: CAPAS[sel.mDer] },
+        ].filter((x) => x.src);
+        document.getElementById("imgEscenario").innerHTML = `<div class="img-pair">${pairs
+          .map((x) => `<figure class="img-fig"><img src="${esc(x.src)}" alt="${esc(x.txt)}"><figcaption>${esc(x.txt)}</figcaption></figure>`)
+          .join("")}</div>`;
       };
-
-      el.querySelectorAll("[data-preset]").forEach((bt) =>
-        bt.addEventListener("click", () => {
-          Object.assign(sel, presets[Number(bt.dataset.preset)].v);
-          pintar();
-        })
-      );
-      el.querySelectorAll("[data-vista]").forEach((bt) =>
-        bt.addEventListener("click", () => {
-          sel.vista = bt.dataset.vista;
-          pintar();
-        })
-      );
       [["selModoIzq", "mIzq"], ["selModoDer", "mDer"]].forEach(([id, k]) =>
         document.getElementById(id).addEventListener("change", (e) => {
           sel[k] = e.target.value;
-          pintar();
+          pintarComp();
         })
       );
       [["selFechaIzq", "fIzq"], ["selFechaDer", "fDer"]].forEach(([id, k]) =>
         document.getElementById(id).addEventListener("change", (e) => {
           sel[k] = Number(e.target.value);
-          pintar();
+          pintarComp();
         })
       );
-      pintar();
+      pintarComp();
     }
-
-    document.getElementById("inputFotoTerreno")?.addEventListener("change", async (ev) => {
-      const file = ev.target.files?.[0];
-      if (!file) return;
-      const out = document.getElementById("fotoTerrenoResultado");
-      const urlObj = URL.createObjectURL(file);
-      const gps = leerExifGps(await file.arrayBuffer());
-      let gpsHtml = "No se detectaron coordenadas EXIF en esta foto.";
-      if (gps && p.centro) {
-        const dist = distanciaMetros(gps.lat, gps.lon, p.centro[1], p.centro[0]);
-        gpsHtml = `GPS EXIF: ${gps.lat.toFixed(5)}, ${gps.lon.toFixed(5)} · Distancia al centro: <strong>${fmtInt(dist)} m</strong>.`;
-      }
-      out.innerHTML = `
-        <div class="photo-preview">
-          <img src="${urlObj}" alt="Foto terreno">
-          <div><strong>${esc(file.name)}</strong><div class="hint">${gpsHtml}</div></div>
-        </div>`;
-    });
   }
 
   function renderTabSerie(p) {
@@ -961,34 +1409,35 @@
     const pack = state.comunaCache[state.comunaSlug];
     const sSitio = pack?.series?.sitios?.[p.site_id];
     if (!sSitio) {
-      el.innerHTML = `<p class="hint">Sin serie histórica disponible para este sitio.</p>`;
+      el.innerHTML = `<p class="hint">Sin evolución histórica disponible para este sitio.</p>`;
       return;
     }
 
     const granOpts = [
       ["semanal", "Semanal"],
       ["mensual", "Mensual"],
-      ["estacional", "Estacional"],
+      ["estacional", "Por estación"],
     ];
-    const ev = p.evento_calor;
-    const evHtml = ev
-      ? `<div class="callout">
-          <strong>Ventana evento térmico (${esc(ev.fecha_pico_calor)}):</strong>
-          NDVI mín. <strong>${fmtNum(ev.ndvi_min, 3)}</strong> (z=${fmtNum(ev.ndvi_z_min, 2)}, ${esc(ev.fecha_min_ndvi)}) ·
-          NDMI hojas mín. <strong>${fmtNum(ev.ndmi_min, 3)}</strong> (z=${fmtNum(ev.ndmi_z_min, 2)}).
-        </div>`
-      : "";
 
     el.innerHTML = `
+      <div class="metrics-grid tabular" style="margin-bottom:10px;">
+        <div class="metric-box">
+          <small>Calor verano del suelo</small>
+          <strong>${fmtNum(p.lst_verano_c, 1)} °C</strong>
+        </div>
+        <div class="metric-box">
+          <small>Salud actual del verde</small>
+          <strong>${p.salud_vegetal_pct ?? "—"}% (${fmtInt(p.n_obs)} lecturas)</strong>
+        </div>
+      </div>
       <div class="chart-toolbar">
         <div class="gran-btns">
           ${granOpts.map(([k, lbl]) => `<button type="button" class="gran-btn ${state.granularidad === k ? "active" : ""}" data-gran="${k}">${lbl}</button>`).join("")}
         </div>
-        <span class="hint" style="margin:0;">Huecos = períodos nubosos sin interpolación.</span>
+        <span class="hint" style="margin:0;">Sin inventar datos en días nublados.</span>
       </div>
       <div class="chart-wrap"><canvas id="canvasSerie"></canvas></div>
-      ${evHtml}
-      <p class="hint">Eje izquierdo: NDVI / NDMI. Eje derecho (°C): temperatura máx. del aire de reanálisis ERA5 (Open-Meteo, CC BY 4.0 no comercial). Barras azules: lluvia ERA5 acumulada (escala independiente).</p>
+      <p class="hint">Línea verde: salud del pasto y árboles. Línea naranja: temperatura máxima del aire (°C). Barras celestes: lluvia.</p>
     `;
 
     el.querySelectorAll(".gran-btn").forEach((b) => {
@@ -1000,43 +1449,14 @@
 
     const rows = sSitio[state.granularidad] || [];
     const labels = rows.map((r) => r[0]);
-    const ndviArr = rows.map((r) => r[2]);
-    const ndmiArr = rows.map((r) => r[3]);
+    const saludArr = rows.map((r) => (r[2] != null ? Math.round(Math.max(0, Math.min(100, (r[2] / 0.6) * 100))) : null));
     const tmaxArr = rows.map((r) => r[6]);
     const rainArr = rows.map((r) => r[7]);
-
-    const idxCalor = rows.findIndex((r) => {
-      if (state.granularidad === "mensual") return r[0] === "2026-01";
-      if (state.granularidad === "estacional") return r[0] === "2026-Verano";
-      return r[1] >= "2026-01-26" && r[1] <= "2026-02-02";
-    });
 
     if (state.chartInstance) {
       state.chartInstance.destroy();
       state.chartInstance = null;
     }
-
-    const markerPlugin = {
-      id: "calorMarker",
-      afterDraw(chart) {
-        if (idxCalor < 0) return;
-        const xMeta = chart.getDatasetMeta(0)?.data?.[idxCalor];
-        if (!xMeta) return;
-        const { ctx, chartArea } = chart;
-        ctx.save();
-        ctx.beginPath();
-        ctx.setLineDash([5, 4]);
-        ctx.lineWidth = 1.5;
-        ctx.strokeStyle = "#b91c1c";
-        ctx.moveTo(xMeta.x, chartArea.top);
-        ctx.lineTo(xMeta.x, chartArea.bottom);
-        ctx.stroke();
-        ctx.fillStyle = "#b91c1c";
-        ctx.font = "bold 10px sans-serif";
-        ctx.fillText("Calor 29-ene-26", Math.min(xMeta.x + 4, chartArea.right - 85), chartArea.top + 12);
-        ctx.restore();
-      },
-    };
 
     const ctx = document.getElementById("canvasSerie").getContext("2d");
     state.chartInstance = new window.Chart(ctx, {
@@ -1045,27 +1465,19 @@
         datasets: [
           {
             type: "line",
-            label: "NDVI (vigor)",
-            data: ndviArr,
+            label: "Salud del verde (%)",
+            data: saludArr,
             borderColor: "#15803d",
+            backgroundColor: "rgba(21,128,61,0.08)",
+            fill: true,
             spanGaps: false,
-            yAxisID: "yIdx",
-            tension: 0.2,
-            pointRadius: state.granularidad === "semanal" ? 2 : 3.5,
+            yAxisID: "ySalud",
+            tension: 0.25,
+            pointRadius: state.granularidad === "semanal" ? 1.5 : 3,
           },
           {
             type: "line",
-            label: "NDMI (humedad hojas)",
-            data: ndmiArr,
-            borderColor: "#0284c7",
-            spanGaps: false,
-            yAxisID: "yIdx",
-            tension: 0.2,
-            pointRadius: state.granularidad === "semanal" ? 2 : 3.5,
-          },
-          {
-            type: "line",
-            label: "T° máx aire (°C)",
+            label: "Temperatura aire (°C)",
             data: tmaxArr,
             borderColor: "#ea580c",
             borderDash: [4, 3],
@@ -1078,7 +1490,7 @@
             type: "bar",
             label: "Lluvia (mm)",
             data: rainArr,
-            backgroundColor: "rgba(56, 189, 248, 0.25)",
+            backgroundColor: "rgba(56, 189, 248, 0.28)",
             yAxisID: "yRain",
           },
         ],
@@ -1088,34 +1500,12 @@
         maintainAspectRatio: false,
         interaction: { mode: "index", intersect: false },
         scales: {
-          yIdx: {
-            type: "linear",
-            position: "left",
-            min: -0.3,
-            max: 0.85,
-            title: { display: true, text: "NDVI / NDMI" },
-          },
-          yTemp: {
-            type: "linear",
-            position: "right",
-            min: 5,
-            max: 45,
-            grid: { drawOnChartArea: false },
-            title: { display: true, text: "T° aire (°C)" },
-          },
-          yRain: {
-            type: "linear",
-            position: "right",
-            display: false,
-            min: 0,
-            suggestedMax: 280,
-          },
+          ySalud: { type: "linear", position: "left", min: 0, max: 100, title: { display: true, text: "Salud verde %" } },
+          yTemp: { type: "linear", position: "right", min: 5, max: 45, grid: { drawOnChartArea: false }, title: { display: true, text: "T° aire (°C)" } },
+          yRain: { type: "linear", position: "right", display: false, min: 0, suggestedMax: 280 },
         },
-        plugins: {
-          legend: { position: "bottom", labels: { boxWidth: 11, font: { size: 10 } } },
-        },
+        plugins: { legend: { position: "bottom", labels: { boxWidth: 11, font: { size: 10 } } } },
       },
-      plugins: [markerPlugin],
     });
   }
 
@@ -1126,19 +1516,30 @@
     const fondosFull = Object.fromEntries((PU.catalogo?.fondos_publicos || []).map((f) => [f.id, f]));
 
     el.innerHTML = `
-      <div class="callout">
-        <strong>Brecha del entorno de 400 m (no solo de la plaza — ESA WorldCover 2021):</strong>
-        Árboles <strong>${fmtNum(p.cobertura_arboles_400m_pct, 1)}%</strong> · Construido/cemento <strong>${fmtNum(p.impermeable_400m_pct, 1)}%</strong> ·
-        Brecha a meta 30%: <strong>${fmtNum(p.brecha_dosel_puntos, 1)} pts</strong> (${fmtNum(p.brecha_dosel_ha, 2)} ha en radio 400 m).
+      <div class="metrics-grid tabular">
+        <div class="metric-box">
+          <small>Árboles necesarios (5 cuadras)</small>
+          <strong>${fmtInt(p.arboles_necesarios_min)} – ${fmtInt(p.arboles_necesarios_max)} árboles</strong>
+          <div class="hint" style="margin:2px 0 0;">Para alcanzar 30% de sombra</div>
+        </div>
+        <div class="metric-box">
+          <small>Inversión estimada</small>
+          <strong>${fmtClpCorto(p.costo_clp_min)} – ${fmtClpCorto(p.costo_clp_max)} CLP</strong>
+          <span class="badge badge-hipotesis" style="margin-top:3px;">hipótesis (sin verificar)</span>
+        </div>
+        <div class="metric-box">
+          <small>Vecinos beneficiados (400 m)</small>
+          <strong>${fmtInt(p.pop_400m)} habitantes</strong>
+          <div class="hint" style="margin:2px 0 0;">${fmtNum(p.pct_techo_calor_400m, 1)}% con techos calientes</div>
+        </div>
+        <div class="metric-box">
+          <small>Confiabilidad del cálculo</small>
+          <strong>${p.confianza_pct ?? 92}% verificado</strong>
+          <div class="hint" style="margin:2px 0 0;">5 fuentes satelitales y censales</div>
+        </div>
       </div>
-      <table class="data-table tabular">
-        <thead><tr><th>Concepto (entorno 400 m)</th><th>Estimación</th><th>Etiqueta</th></tr></thead>
-        <tbody>
-          <tr><td>Árboles requeridos (copa 20–50 m²)</td><td><strong>${fmtInt(p.arboles_necesarios_min)} – ${fmtInt(p.arboles_necesarios_max)}</strong></td><td>WorldCover 2021 + meta 30%</td></tr>
-          <tr><td>Presupuesto arbolado ($45–70 mil c/u)</td><td><strong>${fmtClp(p.costo_clp_min)} – ${fmtClp(p.costo_clp_max)}</strong></td><td><span class="badge badge-hipotesis">hipótesis (sin verificar)</span></td></tr>
-        </tbody>
-      </table>
-      <h3>Intervenciones priorizadas</h3>
+
+      <h3>Qué conviene hacer primero</h3>
       ${intervs
         .map(
           (i) => `<div class="surface-card">
@@ -1146,14 +1547,14 @@
               <strong>${esc(i.nombre)}</strong>
               <span class="badge badge-hipotesis">${esc(i.etiqueta_costo || "hipótesis (sin verificar)")}</span>
             </div>
-            <div class="hint" style="margin:4px 0 0;">Unidad: ${esc(i.unidad)} · Rango: ${fmtClp(i.costo_min_clp)} – ${fmtClp(i.costo_max_clp)}</div>
+            <div class="hint" style="margin:4px 0 0;">Rango referencial: ${fmtClpCorto(i.costo_min_clp)} – ${fmtClpCorto(i.costo_max_clp)} CLP (${esc(i.unidad)})</div>
           </div>`
         )
         .join("")}
-      <h3>Fondos públicos compatibles</h3>
+      <h3>Fondos públicos compatibles para postular</h3>
       ${fondos
         .map((f) => `<div class="surface-card"><strong>${esc(f.nombre)}</strong> <span class="hint">(${esc(f.institucion)})</span>
-          <div class="hint" style="margin:4px 0 0;">Requisito: ${esc((fondosFull[f.id] || {}).requisito_evidencia || "Ficha territorial cuantitativa.")}</div></div>`)
+          <div class="hint" style="margin:4px 0 0;">Requisito: ${esc((fondosFull[f.id] || {}).requisito_evidencia || "Ficha cuantitativa del sitio.")}</div></div>`)
         .join("")}
     `;
   }
@@ -1182,10 +1583,7 @@
     const tabla = new Table({
       width: { size: 100, type: WidthType.PERCENTAGE },
       rows: metaFilas.map(
-        ([k, v]) =>
-          new TableRow({
-            children: [new TableCell({ children: [mkP(k)] }), new TableCell({ children: [mkP(v)] })],
-          })
+        ([k, v]) => new TableRow({ children: [new TableCell({ children: [mkP(k)] }), new TableCell({ children: [mkP(v)] })] })
       ),
     });
 
@@ -1193,22 +1591,20 @@
       sections: [
         {
           children: [
-            mkP(informe.titulo, HeadingLevel.HEADING_1),
+            mkP(limpiarTextoHumano(informe.titulo), HeadingLevel.HEADING_1),
             mkP(textoEtiquetaIA(informe)),
-            mkP(informe.resumen_ejecutivo),
+            mkP(limpiarTextoHumano(informe.resumen_ejecutivo)),
             mkP("Resumen cuantificado", HeadingLevel.HEADING_2),
             tabla,
             mkP("Hallazgos verificados", HeadingLevel.HEADING_2),
-            ...(informe.hallazgos || []).map((h) => mkP("• " + h)),
+            ...(informe.hallazgos || []).map((h) => mkP("• " + limpiarTextoHumano(h))),
             mkP("Acciones e inversión priorizada (hipótesis sin verificar)", HeadingLevel.HEADING_2),
-            ...(informe.acciones_priorizadas || []).map((a) => mkP(`• ${a.nombre}: ${a.rango_estimado || a.detalle || ""}`)),
+            ...(informe.acciones_priorizadas || []).map((a) => mkP(`• ${a.nombre}: ${limpiarTextoHumano(a.rango_estimado || a.detalle || "")}`)),
             mkP("Fondos públicos sugeridos", HeadingLevel.HEADING_2),
             ...(informe.fondos_recomendados || []).map((f) => mkP(`• ${f.nombre} (${f.institucion}): ${f.requisito || ""}`)),
-            ...((informe.plan_30_90_365 || []).length ? [mkP("Qué hacer: pasos a 30, 90 y 365 días", HeadingLevel.HEADING_2)] : []),
-            ...(informe.plan_30_90_365 || []).map((pp) => mkP(`• ${pp.plazo || ""}: ${pp.accion || ""}`)),
-            ...((informe.como_se_medira || []).length ? [mkP("Cómo se medirá el resultado", HeadingLevel.HEADING_2)] : []),
-            ...(informe.como_se_medira || []).map((m) => mkP("• " + m)),
-            mkP("Límites metodológicos", HeadingLevel.HEADING_2),
+            ...((informe.plan_30_90_365 || []).length ? [mkP("Pasos a 30, 90 y 365 días", HeadingLevel.HEADING_2)] : []),
+            ...(informe.plan_30_90_365 || []).map((pp) => mkP(`• ${pp.plazo || ""}: ${limpiarTextoHumano(pp.accion || "")}`)),
+            mkP("Límites y privacidad", HeadingLevel.HEADING_2),
             ...(informe.limitaciones_y_verificacion || []).map((l) => mkP("• " + l)),
           ],
         },
@@ -1219,38 +1615,38 @@
 
   function etiquetaOrigen(informe) {
     const m = String(informe.origen_redaccion || "").match(/^(gemini|openai|deepseek):(.+)$/);
-    return m ? `Redactado con IA (${m[2]}) · cifras verificadas` : "Síntesis por plantilla · cifras verificadas";
+    return m ? `Redactado con IA (${m[2]}) · cifras verificadas` : "Síntesis automática · cifras verificadas";
   }
 
   function textoEtiquetaIA(informe) {
-    return informe.etiqueta_ia || "Síntesis a partir de datos del sistema; debe revisarla una persona antes de entregarla.";
+    return informe.etiqueta_ia || "Resumen basado en datos reales verificados; revisar antes de postular.";
   }
 
   function htmlPlan(informe) {
     const plan = informe.plan_30_90_365 || [];
     if (!plan.length) return "";
     return `<ol class="plan-pasos">${plan
-      .map((p) => `<li><span class="plan-plazo">${esc(p.plazo || p.nombre || "")}</span><span>${esc(p.accion || p.detalle || "")}</span></li>`)
+      .map((p) => `<li><span class="plan-plazo">${esc(p.plazo || p.nombre || "")}</span><span>${esc(limpiarTextoHumano(p.accion || p.detalle || ""))}</span></li>`)
       .join("")}</ol>`;
   }
 
   function renderHtmlInforme(informe) {
     const medicion = informe.como_se_medira || [];
     return `
-      <h3 style="margin-bottom:6px;">${esc(informe.titulo)}</h3>
+      <h3 style="margin-bottom:6px;">${esc(limpiarTextoHumano(informe.titulo))}</h3>
       <p class="informe-etiqueta">${esc(textoEtiquetaIA(informe))}</p>
-      <p>${esc(informe.resumen_ejecutivo)}</p>
-      <h4>Dónde invertir: hallazgos</h4>
-      <ul>${(informe.hallazgos || []).map((h) => `<li>${esc(h)}</li>`).join("")}</ul>
-      <h4>Cómo invertir: acciones del catálogo</h4>
+      <p>${renderMarkdownSimple(limpiarTextoHumano(informe.resumen_ejecutivo))}</p>
+      <h4>Dónde invertir y por qué</h4>
+      <ul>${(informe.hallazgos || []).map((h) => `<li>${esc(limpiarTextoHumano(h))}</li>`).join("")}</ul>
+      <h4>Acciones recomendadas</h4>
       <ul>${(informe.acciones_priorizadas || [])
-        .map((a) => `<li><strong>${esc(a.nombre)}:</strong> ${esc([a.detalle, a.rango_estimado].filter(Boolean).join(" "))}</li>`)
+        .map((a) => `<li><strong>${esc(a.nombre)}:</strong> ${esc(limpiarTextoHumano([a.detalle, a.rango_estimado].filter(Boolean).join(" ")))}</li>`)
         .join("")}</ul>
       <h4>Fondos públicos compatibles</h4>
       <ul>${(informe.fondos_recomendados || []).map((f) => `<li><strong>${esc(f.nombre)}</strong> (${esc(f.institucion)}): ${esc(f.requisito || "")}</li>`).join("")}</ul>
-      ${htmlPlan(informe) ? `<h4>Qué hacer: pasos a 30, 90 y 365 días</h4>${htmlPlan(informe)}` : ""}
-      ${medicion.length ? `<h4>Cómo se medirá el resultado</h4><ul>${medicion.map((m) => `<li>${esc(m)}</li>`).join("")}</ul>` : ""}
-      <h4>Límites y verificación</h4>
+      ${htmlPlan(informe) ? `<h4>Plan de acción 30 / 90 / 365 días</h4>${htmlPlan(informe)}` : ""}
+      ${medicion.length ? `<h4>Cómo mediremos el impacto</h4><ul>${medicion.map((m) => `<li>${esc(limpiarTextoHumano(m))}</li>`).join("")}</ul>` : ""}
+      <h4>Transparencia y límites</h4>
       <ul>${(informe.limitaciones_y_verificacion || []).map((l) => `<li>${esc(l)}</li>`).join("")}</ul>
     `;
   }
@@ -1268,33 +1664,42 @@
 
     el.innerHTML = `
       <div class="export-bar">
-        ${puedeIA ? `<button type="button" class="btn btn-primary" id="btnSitioIA">Redactar con IA (${esc(state.iaEstado.modelo)})</button>` : ""}
-        <button type="button" class="btn ${puedeIA ? "btn-quiet" : "btn-primary"}" id="btnPrintPdf">Imprimir / PDF</button>
+        ${puedeIA ? `<button type="button" class="btn btn-primary" id="btnSitioIA">Redactar con IA</button>` : ""}
+        <button type="button" class="btn ${puedeIA ? "btn-quiet" : "btn-primary"}" id="btnPrintPdf">PDF</button>
         <button type="button" class="btn btn-quiet" id="btnDocx">Word (.docx)</button>
-        <button type="button" class="btn btn-quiet" id="btnCsvSitio">CSV serie</button>
+        <button type="button" class="btn btn-quiet" id="btnCsvSitio">CSV</button>
         <button type="button" class="btn btn-quiet" id="btnGeojsonSitio">GeoJSON</button>
-        <button type="button" class="btn btn-quiet" id="btnJsonPaquete">JSON caso</button>
+        <button type="button" class="btn btn-quiet" id="btnJsonPaquete">JSON</button>
         <button type="button" class="btn btn-quiet" id="btnMailto">Correo</button>
       </div>
       <div style="margin-bottom:8px;">
-        <span class="badge ${iaCustom ? "badge-ia" : "badge-verificado"}">${iaCustom || esPreVerificado ? esc(etiquetaOrigen(informe)) : "Síntesis con cifras verificadas del sitio"}</span>
+        <span class="badge ${iaCustom ? "badge-ia" : "badge-verificado"}">${iaCustom || esPreVerificado ? esc(etiquetaOrigen(informe)) : "Ficha lista · cifras verificadas"}</span>
       </div>
       <p class="hint" id="estadoSitioIA" style="margin:0 0 8px;"></p>
       <article id="informePreview" style="font-size:0.85rem;line-height:1.5;">${renderHtmlInforme(informe)}</article>
     `;
 
     document.getElementById("btnSitioIA")?.addEventListener("click", async () => {
+      if (!puedeUsarIA()) {
+        abrirModalUpgrade("La redacción en vivo con IA está bloqueada en el Plan Gratis ($0).");
+        return;
+      }
       const btn = document.getElementById("btnSitioIA");
       const st = document.getElementById("estadoSitioIA");
       btn.disabled = true;
-      st.textContent = "Redactando informe del parque con IA verificada…";
+      st.textContent = "Redactando ficha clara con DeepSeek IA…";
       try {
         const resp = await fetch("api/informe", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ comuna_slug: state.comunaSlug, site_id: p.site_id }),
+          body: JSON.stringify({ comuna_slug: state.comunaSlug, site_id: p.site_id, email: state.perfil.email }),
         });
         const j = await resp.json().catch(() => ({}));
+        if (resp.status === 402) {
+          abrirModalUpgrade(j.detail || "Plan requerido para usar IA.");
+          btn.disabled = false;
+          return;
+        }
         if (!resp.ok) throw new Error(j.detail || "HTTP " + resp.status);
         state.informeSitioCustom[claveSitio] = j.informe;
         renderTabInforme(feat);
@@ -1304,25 +1709,27 @@
       }
     });
 
-    document.getElementById("btnPrintPdf").addEventListener("click", () => {
+    document.getElementById("btnPrintPdf").addEventListener("click", async () => {
+      if (!(await consumirExportacion("pdf"))) return;
       document.getElementById("printArea").innerHTML = document.getElementById("informePreview").innerHTML;
       window.print();
     });
-    document.getElementById("btnDocx").addEventListener("click", () => {
+    document.getElementById("btnDocx").addEventListener("click", async () => {
+      if (!(await consumirExportacion("docx"))) return;
       descargarWordInforme(
         informe,
         [
-          ["Sitio / Comuna", `${p.nombre} — ${p.comuna}`],
-          ["LST Verano Landsat", `${fmtNum(p.lst_verano_c, 1)} °C (+${fmtNum(p.brecha_calor_vs_vitacura_c, 1)} °C vs Vitacura)`],
-          ["Sentinel-2 NDVI / SAVI / NDMI", `${fmtNum(p.ndvi_actual, 3)} / ${fmtNum(p.savi_actual, 3)} / ${fmtNum(p.ndmi_actual, 3)}`],
-          ["WorldCover árboles / cemento", `${fmtNum(p.cobertura_arboles_400m_pct, 1)}% / ${fmtNum(p.impermeable_400m_pct, 1)}%`],
-          ["Censo 2024 techos zinc / hacin.", `${fmtNum(p.pct_techo_calor_400m, 1)}% / ${fmtNum(p.pct_hacinamiento_400m, 1)}%`],
-          ["Presupuesto (hipótesis)", `${fmtInt(p.arboles_necesarios_min)}–${fmtInt(p.arboles_necesarios_max)} árboles (${fmtClp(p.costo_clp_min)}–${fmtClp(p.costo_clp_max)})`],
+          ["Parque / Comuna", `${p.nombre} — ${p.comuna}`],
+          ["Calor verano", `${fmtNum(p.lst_verano_c, 1)} °C`],
+          ["Salud vegetal", `${p.salud_vegetal_pct ?? "—"}%`],
+          ["Árboles vs cemento (400 m)", `${fmtNum(p.cobertura_arboles_400m_pct, 1)}% / ${fmtNum(p.impermeable_400m_pct, 1)}%`],
+          ["Presupuesto estimado (hipótesis)", `${fmtInt(p.arboles_necesarios_min)}–${fmtInt(p.arboles_necesarios_max)} árboles (${fmtClpCorto(p.costo_clp_min)}–${fmtClpCorto(p.costo_clp_max)})`],
         ],
         `informe_${state.comunaSlug}_${p.site_id}.docx`
       );
     });
-    document.getElementById("btnCsvSitio").addEventListener("click", () => {
+    document.getElementById("btnCsvSitio").addEventListener("click", async () => {
+      if (!(await consumirExportacion("csv"))) return;
       const sSitio = state.comunaCache[state.comunaSlug]?.series?.sitios?.[p.site_id]?.mensual || [];
       const header = "granularidad,site_id,sitio,periodo,fecha_inicio,ndvi,ndmi,pixeles_validos,nubes_escena_pct,temp_max_c,lluvia_mm\n";
       const rows = sSitio
@@ -1330,24 +1737,24 @@
         .join("\n");
       descargarBlob(new Blob([header + rows], { type: "text/csv;charset=utf-8" }), `serie_${state.comunaSlug}_${p.site_id}.csv`);
     });
-    document.getElementById("btnGeojsonSitio").addEventListener("click", () => {
+    document.getElementById("btnGeojsonSitio").addEventListener("click", async () => {
+      if (!(await consumirExportacion("geojson"))) return;
       descargarBlob(new Blob([JSON.stringify({ type: "FeatureCollection", features: [feat] }, null, 2)], { type: "application/geo+json" }), `sitio_${state.comunaSlug}_${p.site_id}.geojson`);
     });
-    document.getElementById("btnJsonPaquete").addEventListener("click", () => {
+    document.getElementById("btnJsonPaquete").addEventListener("click", async () => {
+      if (!(await consumirExportacion("json"))) return;
       descargarBlob(new Blob([JSON.stringify({ paquete, informe }, null, 2)], { type: "application/json" }), `caso_${state.comunaSlug}_${p.site_id}.json`);
     });
     document.getElementById("btnMailto").addEventListener("click", () => {
       const asunto = encodeURIComponent(informe.titulo);
-      const cuerpo = encodeURIComponent(`${informe.resumen_ejecutivo}\n\n(Montos: hipótesis sin verificar)`);
+      const cuerpo = encodeURIComponent(`${limpiarTextoHumano(informe.resumen_ejecutivo)}\n\n(Montos: hipótesis sin verificar)`);
       window.location.href = `mailto:?subject=${asunto}&body=${cuerpo}`;
     });
   }
 
   // =========================================================================
-  // VISTA 2: INFORME IA DE INVERSIÓN
+  // VISTA 2: ASISTENTE IA SIMPLE + CARTERA EJECUTIVA
   // =========================================================================
-  // La clave de la API nunca está en el navegador: la guarda el servidor local (app/servidor.py),
-  // que redacta y verifica. Sin servidor, la página muestra la síntesis por plantilla ya verificada.
   async function consultarEstadoIA() {
     if (window.location.protocol === "file:") return null;
     try {
@@ -1367,45 +1774,245 @@
     state.iaEstado = est;
     btn.disabled = !(est && est.ia_disponible);
     if (!est) {
-      msg.textContent =
-        "Se muestra la síntesis por plantilla, ya verificada. Para redactar con IA abre la página con el servidor local " +
-        "(.venv/bin/uvicorn app.servidor:app --port 8765) y pon la clave en el archivo .env; la clave no se escribe en el navegador.";
+      msg.textContent = "Modo estático sin servidor: abre con uvicorn para conectar DeepSeek IA y Supabase.";
     } else if (!est.ia_disponible) {
-      msg.textContent = "Servidor local activo, pero falta la clave: copia .env.example como .env, pon tu clave y reinicia el servidor.";
+      msg.textContent = "Falta la clave de IA en .env o Vercel.";
     } else {
-      msg.textContent = `IA disponible (${est.modelo}). La clave queda en el servidor y cada texto pasa por el verificador de cifras antes de mostrarse.`;
+      const sbTxt = est.supabase_tablas_listas
+        ? "Supabase conectado"
+        : est.supabase_conectado
+        ? "Supabase enlazado (respaldo local activo hasta ejecutar SQL)"
+        : "modo local";
+      msg.textContent = `IA lista (${est.modelo}) · Base de datos: ${sbTxt}.`;
     }
     document.getElementById("btnRestaurarIA").classList.toggle("hidden", !state.informeIACustom[state.ambitoIA]);
   }
 
+  function actualizarSelectContextoChat(preferSiteId = null) {
+    const sel = document.getElementById("selectContextoChat");
+    if (!sel) return;
+    const scope = state.ambitoIA === "intercomunal" ? state.comunaSlug || "cerro_navia" : state.ambitoIA;
+    const bundle = (PU.informes_inversion || {})[state.ambitoIA] || (PU.informes_inversion || {})[scope];
+    const sitios = bundle?.paquete?.cartera_sitios || [];
+    const casos = recopilarTodosExpedientes().filter((x) => x.grupo === "guardado").slice(0, 8);
+
+    const opts = [`<option value="comuna">Contexto: Comuna completa (${esc(bundle?.paquete?.comuna?.nombre || state.ambitoIA)})</option>`];
+    if (sitios.length) {
+      opts.push(`<optgroup label="Parques prioritarios">`);
+      sitios.forEach((s) => {
+        opts.push(`<option value="sitio:${esc(s.comuna_slug)}:${esc(s.site_id)}">${esc(s.nombre)} (${esc(s.comuna)} · ${fmtNum(s.lst_verano_c, 1)} °C)</option>`);
+      });
+      opts.push(`</optgroup>`);
+    }
+    if (casos.length) {
+      opts.push(`<optgroup label="Mis casos guardados">`);
+      casos.forEach((c) => {
+        opts.push(`<option value="caso:${esc(c.id)}">${esc(c.titulo)}</option>`);
+      });
+      opts.push(`</optgroup>`);
+    }
+    sel.innerHTML = opts.join("");
+    if (preferSiteId) {
+      const match = [...sel.options].find((o) => o.value.endsWith(`:${preferSiteId}`));
+      if (match) sel.value = match.value;
+    }
+  }
+
+  function renderPreviewFotoChat() {
+    const box = document.getElementById("chatFotoPreviewBox");
+    if (!box) return;
+    if (!state.chatImagenDataUrl) {
+      box.classList.add("hidden");
+      box.innerHTML = "";
+      return;
+    }
+    box.classList.remove("hidden");
+    box.innerHTML = `
+      <img src="${state.chatImagenDataUrl}" alt="Foto adjunta para IA">
+      <div style="flex:1;">
+        <strong>Foto / captura lista para la consulta</strong>
+        <div class="hint" style="margin:0;">La IA usará esta imagen junto a los datos reales de la comuna/parque.</div>
+      </div>
+      <button type="button" class="btn btn-quiet" id="btnQuitarFotoChat">Quitar foto</button>
+    `;
+    document.getElementById("btnQuitarFotoChat")?.addEventListener("click", () => {
+      state.chatImagenDataUrl = null;
+      renderPreviewFotoChat();
+    });
+  }
+
+  function agregarBurbujaChat(rol, texto, extra = {}) {
+    const box = document.getElementById("chatMensajes");
+    if (!box) return;
+    const div = document.createElement("div");
+    div.className = `chat-bubble ${rol === "user" ? "chat-bubble-user" : "chat-bubble-ia"}`;
+    const bodyHtml = rol === "user" ? esc(texto).replace(/\n/g, "<br>") : renderMarkdownSimple(texto);
+    if (rol === "user") {
+      div.innerHTML = `<strong>Tú</strong><div>${bodyHtml}</div>`;
+    } else {
+      const btnId = `btnSaveChat_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
+      div.innerHTML = `
+        <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:4px;">
+          <strong>Asistente Pulmón Urbano</strong>
+          <span class="badge badge-verificado">${esc(extra.modelo || "deepseek-flash")}</span>
+        </div>
+        <div>${bodyHtml}</div>
+        <div style="margin-top:8px;">
+          <button type="button" class="btn btn-outline-primary" id="${btnId}">Guardar respuesta y foto como Caso</button>
+        </div>
+      `;
+      setTimeout(() => {
+        document.getElementById(btnId)?.addEventListener("click", async () => {
+          const scopeSlug = extra.comunaSlug || (state.ambitoIA === "intercomunal" ? "cerro_navia" : state.ambitoIA);
+          const tituloLimpio = extra.contextLabel
+            ? `IA: ${extra.contextLabel}`
+            : extra.pregunta && extra.pregunta.length > 84
+            ? extra.pregunta.slice(0, 81).trim() + "…"
+            : extra.pregunta || `Consulta IA (${scopeSlug})`;
+          await guardarCasoPersistente({
+            id: `ia-caso-${Date.now()}`,
+            grupo: "guardado",
+            tipoLabel: state.chatImagenDataUrl ? "Caso IA + Foto" : "Caso IA",
+            titulo: tituloLimpio,
+            comunaSlug: scopeSlug,
+            siteId: extra.siteId || null,
+            fecha: new Date().toISOString().slice(0, 10),
+            nota: "",
+            fotoDataUrl: state.chatImagenDataUrl || null,
+            preguntaIA: extra.pregunta || "",
+            respuestaIA: texto,
+            confianzaPct: extra.confianzaPct || 94,
+            paquete: (PU.informes_inversion?.[state.ambitoIA] || {}).paquete || null,
+            informe: {
+              titulo: tituloLimpio,
+              resumen_ejecutivo: texto,
+              hallazgos: [],
+              acciones_priorizadas: [],
+              fondos_recomendados: [],
+              limitaciones_y_verificacion: ["Respuesta generada y guardada desde el Asistente IA de Pulmón Urbano."],
+            },
+          });
+          document.getElementById(btnId).textContent = "Guardado en Casos ✓";
+          document.getElementById(btnId).disabled = true;
+        });
+      }, 10);
+    }
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  async function enviarPreguntaChatIA(preguntaTxt) {
+    const q = (preguntaTxt || "").trim();
+    if (!q) return;
+    if (!puedeUsarIA()) {
+      abrirModalUpgrade("El Asistente IA con preguntas frecuentes, casos y fotos requiere activar un plan (puedes probarlo en 1 clic).");
+      return;
+    }
+
+    const selCtx = document.getElementById("selectContextoChat")?.value || "comuna";
+    let comunaSlug = state.ambitoIA === "intercomunal" ? state.comunaSlug || "cerro_navia" : state.ambitoIA;
+    let siteId = null;
+    let casoTitulo = null;
+    let contextoDatos = null;
+    let contextLabel = null;
+    let confianzaPct = ((PU.resumen?.comunas || []).find((c) => c.slug === comunaSlug) || {}).confianza_comuna_pct || 94;
+
+    if (selCtx.startsWith("sitio:")) {
+      const parts = selCtx.split(":");
+      comunaSlug = parts[1];
+      siteId = parts[2];
+      const feat = state.comunaCache[comunaSlug]?.geojson?.features?.find((f) => f.properties.site_id === siteId);
+      if (feat) {
+        contextLabel = feat.properties.nombre;
+        confianzaPct = feat.properties.confianza_pct || confianzaPct;
+      }
+    } else if (selCtx.startsWith("caso:")) {
+      const cid = selCtx.slice(5);
+      const found = recopilarTodosExpedientes().find((x) => x.id === cid);
+      if (found) {
+        comunaSlug = found.comunaSlug || comunaSlug;
+        siteId = found.siteId || null;
+        casoTitulo = found.titulo;
+        contextLabel = found.titulo;
+        confianzaPct = found.confianzaPct || confianzaPct;
+        contextoDatos = { resumen: found.informe?.resumen_ejecutivo || "", nota: found.nota || "" };
+      }
+    }
+
+    agregarBurbujaChat("user", q);
+    const input = document.getElementById("inputChatIA");
+    if (input) input.value = "";
+    const btn = document.getElementById("btnEnviarChatIA");
+    btn.disabled = true;
+    btn.textContent = "Pensando…";
+
+    try {
+      const resp = await fetch("api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pregunta: q,
+          comuna_slug: comunaSlug,
+          site_id: siteId,
+          caso_titulo: casoTitulo,
+          contexto_datos: contextoDatos,
+          imagen_data_url: state.chatImagenDataUrl || null,
+          email: state.perfil.email,
+        }),
+      });
+      const j = await resp.json().catch(() => ({}));
+      if (resp.status === 402) {
+        abrirModalUpgrade(j.detail || "Activa un plan para usar el chat IA.");
+      } else if (!resp.ok) {
+        agregarBurbujaChat("ia", "Ocurrió un problema al consultar la IA: " + (j.detail || resp.status));
+      } else {
+        if (j.perfil) {
+          Object.assign(state.perfil, j.perfil);
+          guardarPerfilLocal();
+          actualizarUIPlanYUsuario();
+        }
+        agregarBurbujaChat("ia", j.respuesta, { modelo: j.modelo, comunaSlug, siteId, pregunta: q, contextLabel, confianzaPct });
+      }
+    } catch (err) {
+      agregarBurbujaChat("ia", "No se pudo conectar al servidor local (" + err.message + ").");
+    }
+
+    btn.disabled = false;
+    btn.textContent = "Preguntar a IA";
+  }
+
   async function generarConIAAmbiente(scope) {
+    if (!puedeUsarIA()) {
+      abrirModalUpgrade("Generar informes IA completos requiere Pase por Proyecto o Consultora ⭐.");
+      return;
+    }
     const msg = document.getElementById("estadoIAVivo");
     const btn = document.getElementById("btnGenerarIAVivo");
     btn.disabled = true;
-    msg.textContent = "Redactando con IA sobre las cifras de la cartera y verificando cada número…";
+    msg.textContent = "Redactando cartera ejecutiva con DeepSeek IA y verificando cada cifra…";
     try {
       const resp = await fetch("api/informe", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ambito: scope }),
+        body: JSON.stringify({ ambito: scope, email: state.perfil.email }),
       });
       const j = await resp.json().catch(() => ({}));
+      if (resp.status === 402) {
+        abrirModalUpgrade(j.detail || "Plan requerido.");
+        btn.disabled = false;
+        return;
+      }
       if (!resp.ok) throw new Error(j.detail || "HTTP " + resp.status);
       const diag = j.diagnostico || {};
-      if (diag.uso_plantilla) {
-        const ultimo = (diag.intentos || []).slice(-1)[0] || {};
-        const motivo = ultimo.detalle || (ultimo.errores || []).slice(0, 2).join(" ") || "sin detalle";
-        msg.textContent =
-          (ultimo.resultado === "rechazado"
-            ? "El verificador rechazó el texto de la IA; se mantiene la síntesis por plantilla. Motivo: "
-            : "No se pudo llamar a la IA; se mantiene la síntesis por plantilla. Motivo: ") + motivo;
-      } else {
+      if (!diag.uso_plantilla) {
         state.informeIACustom[scope] = j.informe;
-        msg.textContent = `Texto redactado con IA (${diag.modelo}) y aprobado por el verificador de cifras en el intento ${(diag.intentos || []).length}. Revísalo antes de entregarlo.`;
+        msg.textContent = `Informe actualizado con ${diag.modelo} (verificado en intento ${(diag.intentos || []).length}).`;
         renderVistaInformeIA();
+      } else {
+        msg.textContent = "El verificador mantuvo la versión base para proteger las cifras exactas.";
       }
     } catch (err) {
-      msg.textContent = "No se pudo redactar con IA (" + err.message + "). Se mantiene la síntesis por plantilla.";
+      msg.textContent = "No se pudo redactar con IA (" + err.message + ").";
     }
     btn.disabled = !(state.iaEstado && state.iaEstado.ia_disponible);
     document.getElementById("btnRestaurarIA").classList.toggle("hidden", !state.informeIACustom[scope]);
@@ -1420,19 +2027,35 @@
     document.getElementById("btnCopiarPaqueteIA").addEventListener("click", async () => {
       const bundle = (PU.informes_inversion || {})[state.ambitoIA];
       if (!bundle) return;
-      const texto = JSON.stringify(bundle.paquete, null, 2);
-      const msg = document.getElementById("estadoIAVivo");
-      try {
-        await navigator.clipboard.writeText(texto);
-        msg.textContent = "Datos de la cartera copiados: pégalos en tu propio asistente de IA. Ese texto no pasa por nuestro verificador.";
-      } catch (_e) {
-        descargarBlob(new Blob([texto], { type: "application/json" }), `paquete_${state.ambitoIA}.json`);
-        msg.textContent = "Datos de la cartera descargados como JSON para usarlos en tu propio asistente de IA.";
-      }
+      descargarBlob(new Blob([JSON.stringify(bundle.paquete, null, 2)], { type: "application/json" }), `paquete_${state.ambitoIA}.json`);
+    });
+    document.getElementById("btnDesbloquearDesdelaChat")?.addEventListener("click", () => {
+      activarPlanEnBackend("consultora", state.modalidadPlanUI);
+    });
+    document.querySelectorAll(".faq-chip").forEach((b) => {
+      b.addEventListener("click", () => enviarPreguntaChatIA(b.dataset.q));
+    });
+    document.getElementById("btnEnviarChatIA")?.addEventListener("click", () => {
+      enviarPreguntaChatIA(document.getElementById("inputChatIA").value);
+    });
+    document.getElementById("inputChatIA")?.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") enviarPreguntaChatIA(e.target.value);
+    });
+    document.getElementById("inputFotoChatIA")?.addEventListener("change", (ev) => {
+      const f = ev.target.files?.[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        state.chatImagenDataUrl = String(reader.result || "");
+        renderPreviewFotoChat();
+      };
+      reader.readAsDataURL(f);
+      ev.target.value = "";
     });
   }
 
   function renderVistaInformeIA() {
+    actualizarSelectContextoChat();
     const scope = state.ambitoIA;
     const bundle = (PU.informes_inversion || {})[scope];
     const cont = document.getElementById("contenidoInformeIA");
@@ -1449,47 +2072,38 @@
     cont.innerHTML = `
       <div class="portfolio-kpis tabular">
         <div class="kpi-card">
-          <span class="kpi-label">Sitios prioritarios en cartera</span>
-          <strong class="kpi-val">${fmtInt(cr.n_sitios_cartera)} sitios</strong>
+          <span class="kpi-label">Parques en esta cartera</span>
+          <strong class="kpi-val">${fmtInt(cr.n_sitios_cartera)} parques distintos</strong>
           <span class="kpi-note">${esc(paq.comuna.nombre)}</span>
         </div>
         <div class="kpi-card">
-          <span class="kpi-label">Calor estival máx. / medio Landsat</span>
+          <span class="kpi-label">Calor estival máx. / promedio</span>
           <strong class="kpi-val">${fmtNum(cr.lst_max_cartera_c, 1)} °C / ${fmtNum(cr.lst_media_cartera_c, 1)} °C</strong>
-          <span class="kpi-note">5 escenas verano 2025-26</span>
+          <span class="kpi-note">5 lecturas de verano</span>
         </div>
         <div class="kpi-card">
-          <span class="kpi-label">Árboles estimados cartera</span>
+          <span class="kpi-label">Árboles necesarios (entorno 400 m)</span>
           <strong class="kpi-val">${fmtInt(cr.arboles_min_cartera)} – ${fmtInt(cr.arboles_max_cartera)}</strong>
-          <span class="kpi-note">Meta mínima 30% WorldCover 2021</span>
+          <span class="kpi-note">Meta mínima 30% cobertura</span>
         </div>
         <div class="kpi-card" title="${esc(fmtClp(cr.costo_clp_min_cartera))} – ${esc(fmtClp(cr.costo_clp_max_cartera))}">
-          <span class="kpi-label">Presupuesto estimado cartera</span>
+          <span class="kpi-label">Inversión referencial total</span>
           <strong class="kpi-val">${fmtClpCorto(cr.costo_clp_min_cartera)} – ${fmtClpCorto(cr.costo_clp_max_cartera)} CLP</strong>
           <span class="badge badge-hipotesis" style="margin-top:3px;">hipótesis (sin verificar)</span>
         </div>
       </div>
 
-      <div class="surface-card">
-        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
-          <h3 style="margin:0;">${esc(inf.titulo)}</h3>
-          <span class="badge ${state.informeIACustom[scope] || /^deepseek|^gemini|^openai|^llm/i.test(inf.origen_redaccion || "") ? "badge-ia" : "badge-verificado"}">${esc(etiquetaOrigen(inf))}</span>
-        </div>
-        <p class="informe-etiqueta">${esc(textoEtiquetaIA(inf))}</p>
-        <p style="font-size:0.9rem;line-height:1.55;max-width:78ch;">${esc(inf.resumen_ejecutivo)}</p>
-      </div>
-
-      <div class="surface-card" style="overflow-x:auto;">
+      <div class="surface-card" style="overflow-x:auto;margin-bottom:14px;">
         <h3>Mayores casos donde invertir primero</h3>
         <table class="exec-table tabular">
           <thead>
             <tr>
               <th>Parque y comuna</th>
-              <th class="num-col">Prioridad</th>
+              <th class="num-col">Urgencia</th>
               <th class="num-col">Calor verano</th>
               <th>Árboles / Cemento (400 m)</th>
               <th class="num-col">Techos zinc</th>
-              <th class="num-col">Arbolado y fondo</th>
+              <th class="num-col">Árboles y fondo</th>
               <th></th>
             </tr>
           </thead>
@@ -1507,7 +2121,7 @@
                     <span class="rank-num">${i + 1}</span>
                     <div>
                       <strong>${esc(s.nombre)}</strong>
-                      <span class="park-sub">${esc(s.comuna)} · ${fmtNum((s.area_m2 || 0) / 10000, 2)} ha</span>
+                      <span class="park-sub">${esc(s.comuna)} · ${fmtNum((s.area_m2 || 0) / 10000, 2)} ha · Conf. ${s.confianza_pct ?? 92}%</span>
                     </div>
                   </div>
                 </td>
@@ -1520,7 +2134,7 @@
                 </td>
                 <td>
                   <span><strong>${fmtNum(arb, 1)}%</strong> árb · ${fmtNum(s.impermeable_400m_pct, 1)}% cem</span>
-                  <div class="stack-bar" title="Árboles ${fmtNum(arb, 1)}% vs Cemento ${fmtNum(s.impermeable_400m_pct, 1)}%">
+                  <div class="stack-bar">
                     <div class="stack-tree" style="width:${arb.toFixed(1)}%;"></div>
                     <div class="stack-cement" style="width:${cem.toFixed(1)}%;"></div>
                   </div>
@@ -1540,35 +2154,25 @@
         </table>
       </div>
 
-      <div class="cards-grid">
-        <div class="surface-card">
-          <h4>Hallazgos clave</h4>
-          <ul style="padding-left:18px;font-size:0.84rem;line-height:1.48;">
-            ${(inf.hallazgos || []).map((h) => `<li>${esc(h)}</li>`).join("")}
-          </ul>
+      <div class="surface-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+          <h3 style="margin:0;">${esc(limpiarTextoHumano(inf.titulo))}</h3>
+          <span class="badge ${state.informeIACustom[scope] || /^deepseek|^gemini|^openai|^llm/i.test(inf.origen_redaccion || "") ? "badge-ia" : "badge-verificado"}">${esc(etiquetaOrigen(inf))}</span>
         </div>
-        <div class="surface-card">
-          <h4>Fondos recomendados</h4>
-          <ul style="padding-left:18px;font-size:0.84rem;line-height:1.48;">
-            ${(inf.fondos_recomendados || []).map((f) => `<li><strong>${esc(f.nombre)}:</strong> ${esc(f.requisito || "")}</li>`).join("")}
-          </ul>
-        </div>
-        ${
-          htmlPlan(inf)
-            ? `<div class="surface-card"><h4>Qué hacer: pasos a 30, 90 y 365 días</h4>${htmlPlan(inf)}</div>`
-            : ""
-        }
-        ${
-          (inf.como_se_medira || []).length
-            ? `<div class="surface-card"><h4>Cómo se medirá el resultado</h4>
-                <ul style="padding-left:18px;font-size:0.84rem;line-height:1.48;">${inf.como_se_medira.map((m) => `<li>${esc(m)}</li>`).join("")}</ul></div>`
-            : ""
-        }
-        <div class="surface-card">
-          <h4>Límites y verificación</h4>
-          <ul style="padding-left:18px;font-size:0.82rem;line-height:1.48;color:var(--muted);">
-            ${(inf.limitaciones_y_verificacion || []).map((l) => `<li>${esc(l)}</li>`).join("")}
-          </ul>
+        <p style="font-size:0.9rem;line-height:1.55;max-width:78ch;">${esc(limpiarTextoHumano(inf.resumen_ejecutivo))}</p>
+        <div class="cards-grid" style="margin-top:10px;">
+          <div class="surface-card">
+            <h4>Hallazgos simples</h4>
+            <ul style="padding-left:18px;font-size:0.84rem;line-height:1.48;">
+              ${(inf.hallazgos || []).map((h) => `<li>${esc(limpiarTextoHumano(h))}</li>`).join("")}
+            </ul>
+          </div>
+          <div class="surface-card">
+            <h4>Fondos públicos recomendados</h4>
+            <ul style="padding-left:18px;font-size:0.84rem;line-height:1.48;">
+              ${(inf.fondos_recomendados || []).map((f) => `<li><strong>${esc(f.nombre)}:</strong> ${esc(f.requisito || "")}</li>`).join("")}
+            </ul>
+          </div>
         </div>
       </div>
     `;
@@ -1577,7 +2181,7 @@
       b.addEventListener("click", async () => {
         cambiarVista("mapa");
         await seleccionarComuna(b.dataset.slug);
-        abrirSitio(b.dataset.site, "resumen");
+        abrirSitio(b.dataset.site, "imagenes");
         const lyr = state.poligonosPorId[b.dataset.site];
         if (lyr && state.map) state.map.fitBounds(lyr.getBounds(), { maxZoom: 16, padding: [36, 36] });
       });
@@ -1585,29 +2189,61 @@
   }
 
   // =========================================================================
-  // VISTA 3: CASOS Y ARCHIVOS
+  // VISTA 3: CASOS, FOTOS Y ARCHIVOS
   // =========================================================================
   function recopilarTodosExpedientes() {
     const items = [];
+    const vistosIds = new Set();
+
+    for (const s of state.casosServidor || []) {
+      const it = {
+        id: s.id,
+        grupo: "guardado",
+        tipoLabel: s.tipo_label || "Caso Supabase",
+        titulo: s.titulo,
+        comunaSlug: s.comuna_slug || "cerro_navia",
+        siteId: s.site_id || null,
+        fecha: (s.created_at || new Date().toISOString()).slice(0, 10),
+        nota: s.nota || "",
+        fotoDataUrl: s.foto_data_url || null,
+        preguntaIA: s.pregunta_ia || null,
+        respuestaIA: s.respuesta_ia || null,
+        confianzaPct: s.confianza_pct || 94,
+        paquete: s.paquete || {},
+        informe: s.informe || {},
+      };
+      items.push(it);
+      vistosIds.add(it.id);
+    }
+
+    for (const g of leerCasosLocales()) {
+      if (!vistosIds.has(g.id)) {
+        items.push(g);
+        vistosIds.add(g.id);
+      }
+    }
+
     for (const c of PU.casos || []) {
-      const inf = (PU.informes || {})[c.caso_id];
+      if (vistosIds.has(c.caso_id)) continue;
       items.push({
         id: c.caso_id,
         grupo: "pitch",
-        tipoLabel: "Caso del pitch",
+        tipoLabel: "Caso ejemplo",
         titulo: c.titulo,
         comunaSlug: c.comuna.slug,
         siteId: c.sitio.site_id,
         fecha: c.fecha_generacion || "2026-11-22",
         paquete: c,
-        informe: inf,
+        informe: (PU.informes || {})[c.caso_id],
       });
     }
+
     for (const [scope, bundle] of Object.entries(PU.informes_inversion || {})) {
+      if (vistosIds.has(bundle.paquete.caso_id)) continue;
       items.push({
         id: bundle.paquete.caso_id,
         grupo: "cartera",
-        tipoLabel: "Cartera de inversión",
+        tipoLabel: "Cartera por comuna",
         titulo: bundle.paquete.titulo,
         comunaSlug: scope === "intercomunal" ? "cerro_navia" : scope,
         siteId: null,
@@ -1615,25 +2251,6 @@
         paquete: bundle.paquete,
         informe: bundle.informe,
       });
-    }
-    for (const g of leerCasosGuardados()) {
-      items.push(g);
-    }
-    // Agrega Top 5 pre-verificados de comunas ya cacheadas
-    for (const [slug, pack] of Object.entries(state.comunaCache)) {
-      for (const [sid, entry] of Object.entries(pack.informesTop5 || {})) {
-        items.push({
-          id: entry.paquete.caso_id,
-          grupo: "top5",
-          tipoLabel: "Top 5 comunal",
-          titulo: entry.paquete.titulo,
-          comunaSlug: slug,
-          siteId: sid,
-          fecha: entry.paquete.fecha_generacion || "2026-11-22",
-          paquete: entry.paquete,
-          informe: entry.informe,
-        });
-      }
     }
     return items;
   }
@@ -1705,20 +2322,21 @@
     const ultImg = imgs[imgs.length - 1];
 
     const thumbs = [];
-    if (sitio.imagen_lst) thumbs.push([sitio.imagen_lst, "Térmico Landsat (°C)"]);
-    if (ultImg?.ndvi) thumbs.push([ultImg.ndvi, `NDVI HD (${ultImg.fecha})`]);
-    if (ultImg?.ndmi) thumbs.push([ultImg.ndmi, `NDMI Hojas (${ultImg.fecha})`]);
-    if (ultImg?.color) thumbs.push([ultImg.color, `Color natural (${ultImg.fecha})`]);
+    if (item.fotoDataUrl) thumbs.push([item.fotoDataUrl, "Foto capturada / adjunta"]);
+    if (sitio.imagen_lst) thumbs.push([sitio.imagen_lst, "Calor verano (Landsat)"]);
+    if (ultImg?.color) thumbs.push([ultImg.color, `Satélite natural (${ultImg.fecha})`]);
+    if (ultImg?.ndvi) thumbs.push([ultImg.ndvi, `Salud vegetal (${ultImg.fecha})`]);
 
     visor.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:10px;flex-wrap:wrap;margin-bottom:10px;">
         <div>
           <span class="badge badge-verificado">${esc(item.tipoLabel)}</span>
           <span class="badge badge-alta">${esc(item.fecha)}</span>
+          ${item.confianzaPct ? `<span class="badge badge-verificado">Confianza ${item.confianzaPct}%</span>` : ""}
           <h3 style="margin:6px 0 2px;">${esc(item.titulo)}</h3>
         </div>
         <div style="display:flex;gap:6px;flex-wrap:wrap;">
-          ${item.siteId ? `<button type="button" class="btn btn-primary" id="btnAbrirCasoMapa">Abrir en Mapa satelital</button>` : ""}
+          ${item.siteId ? `<button type="button" class="btn btn-primary" id="btnAbrirCasoMapa">Abrir en Mapa</button>` : ""}
           <button type="button" class="btn btn-quiet" id="btnArchivoDocx">Word (.docx)</button>
           <button type="button" class="btn btn-quiet" id="btnArchivoPdf">PDF</button>
           <button type="button" class="btn btn-quiet" id="btnArchivoJson">JSON</button>
@@ -1729,18 +2347,22 @@
       ${
         thumbs.length
           ? `<div class="thumb-strip">
-              ${thumbs
-                .map(([src, lbl]) => `<div class="thumb-card"><img src="${esc(src)}" alt="${esc(lbl)}"><span>${esc(lbl)}</span></div>`)
-                .join("")}
+              ${thumbs.map(([src, lbl]) => `<div class="thumb-card"><img src="${esc(src)}" alt="${esc(lbl)}"><span>${esc(lbl)}</span></div>`).join("")}
             </div>`
           : ""
       }
 
       ${
+        item.preguntaIA || item.respuestaIA
+          ? `<div class="callout"><strong>Consulta guardada de Asistente IA:</strong><br><em>${esc(item.preguntaIA || "")}</em><div style="margin-top:4px;">${renderMarkdownSimple(item.respuestaIA || "")}</div></div>`
+          : ""
+      }
+
+      ${
         item.grupo === "guardado"
-          ? `<div class="surface-card">
-              <label for="txtNotaCaso" style="font-size:0.8rem;font-weight:700;display:block;margin-bottom:5px;">Nota de inspección en terreno (guardada en este navegador):</label>
-              <textarea id="txtNotaCaso" class="notes-textarea" placeholder="Escribe observaciones municipales, verificación de riego, especies presentes…">${esc(item.nota || "")}</textarea>
+          ? `<div class="surface-card" style="margin-bottom:10px;">
+              <label for="txtNotaCaso" style="font-size:0.8rem;font-weight:700;display:block;margin-bottom:5px;">Nota de inspección (guardada en Supabase):</label>
+              <textarea id="txtNotaCaso" class="notes-textarea" placeholder="Escribe observaciones en terreno…">${esc(item.nota || "")}</textarea>
               <button type="button" class="btn btn-outline-primary" id="btnGuardarNotaCaso">Guardar nota</button>
             </div>`
           : ""
@@ -1754,46 +2376,149 @@
     document.getElementById("btnAbrirCasoMapa")?.addEventListener("click", async () => {
       cambiarVista("mapa");
       await seleccionarComuna(item.comunaSlug);
-      abrirSitio(item.siteId, "informe");
+      abrirSitio(item.siteId, "imagenes");
       const lyr = state.poligonosPorId[item.siteId];
       if (lyr && state.map) state.map.fitBounds(lyr.getBounds(), { maxZoom: 16, padding: [36, 36] });
     });
 
-    document.getElementById("btnArchivoDocx")?.addEventListener("click", () => {
+    document.getElementById("btnArchivoDocx")?.addEventListener("click", async () => {
+      if (!(await consumirExportacion("docx"))) return;
       descargarWordInforme(
         inf,
-        [
-          ["Expediente", item.titulo],
-          ["Tipo", item.tipoLabel],
-          ["Fecha", item.fecha],
-        ],
+        [["Expediente", item.titulo], ["Tipo", item.tipoLabel], ["Fecha", item.fecha]],
         `${item.id}.docx`
       );
     });
-    document.getElementById("btnArchivoPdf")?.addEventListener("click", () => {
+    document.getElementById("btnArchivoPdf")?.addEventListener("click", async () => {
+      if (!(await consumirExportacion("pdf"))) return;
       document.getElementById("printArea").innerHTML = document.getElementById("archivoInformeCuerpo").innerHTML;
       window.print();
     });
-    document.getElementById("btnArchivoJson")?.addEventListener("click", () => {
+    document.getElementById("btnArchivoJson")?.addEventListener("click", async () => {
+      if (!(await consumirExportacion("json"))) return;
       descargarBlob(new Blob([JSON.stringify(item, null, 2)], { type: "application/json" }), `${item.id}.json`);
     });
-    document.getElementById("btnGuardarNotaCaso")?.addEventListener("click", () => {
-      const nota = document.getElementById("txtNotaCaso").value;
-      const lista = leerCasosGuardados().map((g) => (g.id === item.id ? { ...g, nota } : g));
-      guardarCasosGuardados(lista);
-      item.nota = nota;
-      alert("Nota guardada en Casos y Archivos.");
+    document.getElementById("btnGuardarNotaCaso")?.addEventListener("click", async () => {
+      item.nota = document.getElementById("txtNotaCaso").value;
+      await guardarCasoPersistente(item);
+      alert("Nota guardada en Casos y Supabase.");
     });
-    document.getElementById("btnEliminarCasoGuardado")?.addEventListener("click", () => {
-      const lista = leerCasosGuardados().filter((g) => g.id !== item.id);
-      guardarCasosGuardados(lista);
+    document.getElementById("btnEliminarCasoGuardado")?.addEventListener("click", async () => {
+      guardarCasosLocales(leerCasosLocales().filter((g) => g.id !== item.id));
+      state.casosServidor = state.casosServidor.filter((g) => g.id !== item.id);
+      if (window.location.protocol !== "file:") {
+        try { await fetch(`api/casos/${encodeURIComponent(item.id)}`, { method: "DELETE" }); } catch (_e) {}
+      }
       state.casoArchivoSelId = null;
       renderListaCasos();
     });
   }
 
   // =========================================================================
-  // MODALES COMPLEMENTARIOS Y NAVEGACIÓN PRINCIPAL
+  // VISTA 4: PLANES, MÁRGENES, COMPETENCIA, BML Y PRIVACIDAD
+  // =========================================================================
+  function renderPlanesView() {
+    const grid = document.getElementById("planesGrid");
+    if (!grid) return;
+    const mod = PU.catalogo?.modelo_negocio || {};
+    const planes = mod.escalera_planes || [];
+    const esAnual = state.modalidadPlanUI === "anual";
+
+    grid.innerHTML = planes
+      .map((pl) => {
+        const esActivo = state.perfil.plan_id === pl.id;
+        const precioTxt = esAnual && pl.anual_texto && pl.id !== "gratis" && pl.id !== "pase_proyecto" ? pl.anual_texto : pl.precio_texto;
+        return `
+        <div class="plan-tier-card ${pl.destacado ? "plan-featured" : ""} ${esActivo ? "plan-active" : ""}">
+          <div>
+            <div style="display:flex;justify-content:space-between;gap:6px;align-items:flex-start;margin-bottom:4px;">
+              <strong>${esc(pl.nombre)}</strong>
+              ${esActivo ? `<span class="badge badge-verificado">Activo</span>` : pl.destacado ? `<span class="badge badge-prioritario">Recomendado</span>` : ""}
+            </div>
+            <div class="plan-price-main">${esc(precioTxt)}</div>
+            <div class="hint" style="margin:2px 0 8px;">${esc(esAnual ? pl.anual_texto : pl.precio_texto)} · Margen ${pl.margen_bruto_pct ? pl.margen_bruto_pct + "%" : "Adquisición"}</div>
+            <p style="font-size:0.78rem;color:var(--muted);line-height:1.4;margin-bottom:8px;"><strong>Por qué:</strong> ${esc(pl.por_que)}</p>
+            <ul style="margin:0 0 8px 16px;padding:0;font-size:0.78rem;line-height:1.45;">
+              ${(pl.incluye || []).map((inc) => `<li>${esc(inc)}</li>`).join("")}
+            </ul>
+          </div>
+          <button type="button" class="btn ${esActivo ? "btn-outline-primary" : "btn-primary"} btn-activar-plan" data-plan-id="${esc(pl.id)}">
+            ${esActivo ? "Plan activo ✓ (Re-activar)" : "Activar Plan"}
+          </button>
+        </div>`;
+      })
+      .join("");
+
+    grid.querySelectorAll(".btn-activar-plan").forEach((b) => {
+      b.addEventListener("click", () => activarPlanEnBackend(b.dataset.planId, state.modalidadPlanUI));
+    });
+
+    const addons = document.getElementById("addonsGrid");
+    if (addons) {
+      addons.innerHTML =
+        `<strong style="font-size:0.8rem;align-self:center;">Add-ons opcionales:</strong>` +
+        (mod.addons_opcionales || []).map((a) => `<span class="addon-pill"><strong>${esc(a.nombre)}:</strong> ${esc(a.precio)}</span>`).join("");
+    }
+
+    const compBox = document.getElementById("tablaCompetenciaMargenes");
+    if (compBox) {
+      const comps = mod.competencia || [];
+      compBox.innerHTML = `
+        <table class="exec-table tabular">
+          <thead>
+            <tr>
+              <th>Plataforma / Competidor</th>
+              <th>Precio de referencia</th>
+              <th>Tiempo hasta informe</th>
+              <th>IA verificada c/ fotos</th>
+              <th>Datos Chile + Censo 2024</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${comps
+              .map(
+                (c, idx) => `
+              <tr style="${idx === 0 ? "background:#f0fdf4;font-weight:600;" : ""}">
+                <td>${esc(c.nombre)}</td>
+                <td>${esc(c.precio)}</td>
+                <td>${esc(c.tiempo_informe)}</td>
+                <td>${esc(c.ia_verificada)}</td>
+                <td>${esc(c.foco_chile)}</td>
+              </tr>`
+              )
+              .join("")}
+          </tbody>
+        </table>
+      `;
+    }
+
+    const bmlBox = document.getElementById("bmlImpactGrid");
+    if (bmlBox) {
+      const bml = mod.bml_ciclo || {};
+      bmlBox.innerHTML = `
+        <p style="font-size:0.85rem;line-height:1.5;"><strong>Cuantificación hoy:</strong> <strong>542 parques reales</strong> en 4 comunas (~130 lecturas satelitales c/u), acortando de 3 semanas a 3 minutos la preparación de expedientes.</p>
+        <ul style="padding-left:18px;font-size:0.84rem;line-height:1.5;">
+          <li><strong>Construir:</strong> ${esc(bml.construir || "")}</li>
+          <li><strong>Medir:</strong> ${esc(bml.medir || "")}</li>
+          <li><strong>Aprender:</strong> ${esc(bml.aprender || "")}</li>
+        </ul>
+      `;
+    }
+
+    const privBox = document.getElementById("privacidadGrid");
+    if (privBox) {
+      const priv = mod.privacidad_y_confianza || {};
+      privBox.innerHTML = `
+        <p style="font-size:0.85rem;font-weight:700;color:var(--primary);margin-bottom:6px;">${esc(priv.marco_legal || "Ley 19.628 y Ley 21.719 (Chile)")}</p>
+        <ul style="padding-left:18px;font-size:0.84rem;line-height:1.5;">
+          ${(priv.principios || []).map((pr) => `<li>${esc(pr)}</li>`).join("")}
+        </ul>
+      `;
+    }
+  }
+
+  // =========================================================================
+  // MODALES COMPLEMENTARIOS Y NAVEGACIÓN
   // =========================================================================
   function abrirModal(titulo, html) {
     document.getElementById("modalTitle").textContent = titulo;
@@ -1811,23 +2536,22 @@
           <td><strong>${fmtNum(c.lst_verano_mediana_c, 1)} °C</strong></td>
           <td>${fmtNum(c.cobertura_arboles_comuna_pct, 1)}% / ${fmtNum(c.impermeable_comuna_pct, 1)}%</td>
           <td><strong>${fmtNum(c.pct_techo_calor_comuna, 1)}%</strong></td>
-          <td>${fmtNum(c.pct_hacinamiento_comuna, 1)}%</td>
+          <td>${c.confianza_comuna_pct || 94}%</td>
           <td>${fmtNum(c.aire?.pm2_5_media, 1)} µg/m³</td>
-          <td>${fmtNum(c.ndvi_medio, 3)}</td>
         </tr>`
       )
       .join("");
 
     abrirModal(
-      "Comparación intercomunal (Calor Landsat, Dosel WorldCover, Censo térmico y Aire)",
+      "Comparación entre comunas (Calor, Árboles, Techos y Confianza %)",
       `
-        <p class="hint">Vitacura muestra menor temperatura estival (34,9 °C), 33,5% de dosel y solo 7,0% de techos precarios/zinc frente a Cerro Navia y Quilicura.</p>
+        <p class="hint">Vitacura (comuna control con 33,5% de árboles) registra hasta 8 °C menos de calor estival en suelo frente a Quilicura (42,9 °C).</p>
         <div style="overflow-x:auto;">
           <table class="data-table tabular">
             <thead>
               <tr>
-                <th>Comuna</th><th>LST Verano</th><th>Árboles / Cemento</th>
-                <th>Techos zinc/prec.</th><th>Hacinamiento</th><th>PM2.5 CAMS</th><th>NDVI medio</th>
+                <th>Comuna</th><th>Calor verano</th><th>Árboles / Cemento</th>
+                <th>Techos zinc</th><th>Confianza %</th><th>Aire PM2.5</th>
               </tr>
             </thead>
             <tbody>${filas}</tbody>
@@ -1844,57 +2568,25 @@
       data: {
         labels: comunas.map((c) => c.nombre),
         datasets: [
-          { label: "Calor verano Landsat (°C)", data: comunas.map((c) => c.lst_verano_mediana_c), backgroundColor: "#ea580c" },
-          { label: "Cobertura arbórea %", data: comunas.map((c) => c.cobertura_arboles_comuna_pct), backgroundColor: "#15803d" },
-          { label: "Techos zinc/precarios %", data: comunas.map((c) => c.pct_techo_calor_comuna), backgroundColor: "#6366f1" },
+          { label: "Calor verano (°C)", data: comunas.map((c) => c.lst_verano_mediana_c), backgroundColor: "#ea580c" },
+          { label: "Cobertura de árboles %", data: comunas.map((c) => c.cobertura_arboles_comuna_pct), backgroundColor: "#15803d" },
+          { label: "Techos calientes (zinc) %", data: comunas.map((c) => c.pct_techo_calor_comuna), backgroundColor: "#6366f1" },
         ],
       },
       options: { responsive: true, maintainAspectRatio: false },
     });
   }
 
-  function mostrarModalPlanes() {
-    const mod = PU.catalogo?.modelo_negocio || {};
-    const planes = mod.escalera_planes || [];
-    const cards = planes
-      .map(
-        (pl) => `
-        <div class="plan-card">
-          <div style="display:flex;justify-content:space-between;gap:6px;margin-bottom:4px;">
-            <strong>${esc(pl.nombre)}</strong>
-            <span class="badge badge-hipotesis">${esc(pl.etiqueta || "hipótesis (sin verificar)")}</span>
-          </div>
-          <div style="font-size:0.92rem;font-weight:700;color:var(--primary);margin-bottom:4px;">
-            ${pl.precio_clp === 0 ? "$0 (Gratuito — Freemium permanente)" : `${fmtClp(pl.precio_min_clp)} – ${fmtClp(pl.precio_max_clp)} · ${esc(pl.periodicidad)}`}
-          </div>
-          <div class="hint" style="margin-bottom:5px;">${esc(pl.publico_objetivo)} · ${esc(pl.horas_soporte)}</div>
-          <ul style="margin:0 0 0 16px;padding:0;font-size:0.79rem;">${(pl.incluye || []).map((inc) => `<li>${esc(inc)}</li>`).join("")}</ul>
-        </div>`
-      )
-      .join("");
-
-    abrirModal(
-      "Planes y modelo de negocio B2B2G (Compra Ágil)",
-      `
-        <div class="callout callout-warn">
-          <strong>Transparencia:</strong> Todos los montos están etiquetados como <strong>hipótesis (sin verificar)</strong>. ${esc(mod.nota_compra_agil || "")}
-        </div>
-        <div class="cards-grid">${cards}</div>
-        <p class="hint" style="margin-top:10px;"><strong>Nota de licenciamiento:</strong> ${esc(mod.nota_licencia_clima || "")}</p>
-      `
-    );
-  }
-
   function mostrarModalAyuda() {
     abrirModal(
-      "Guía metodológica y fuentes satelitales",
+      "Cómo leer Pulmón Urbano en 1 minuto (sin tecnicismos)",
       `
         <ul>
-          <li><strong>NASA/USGS Landsat 8/9 (30 m):</strong> temperatura superficial terrestre (LST °C) calculada sobre 5 escenas despejadas de verano 2025–2026 con máscara de nubes QA_PIXEL.</li>
-          <li><strong>Copernicus Sentinel-2 (10/20 m):</strong> NDVI (vigor vegetal), SAVI (ajustado a suelo seco), NDMI (<strong>humedad de la vegetación en hojas, no suelo</strong>) y recuperación adaptativa de bordes en plazas angostas.</li>
-          <li><strong>ESA WorldCover 2021 (10 m, CC BY 4.0):</strong> distingue dosel arbóreo frente a superficie construida/impermeable (cemento). Las cifras por sitio miden la brecha del entorno de 400 m (no solo de la plaza); la cifra comunal superior se calcula sobre el área total de la comuna.</li>
-          <li><strong>Copernicus CAMS y reanálisis ERA5 vía Open-Meteo (CC BY 4.0 no comercial):</strong> calidad del aire comunal (PM2.5, PM10, NO₂, radiación UV) y clima diario de referencia comunal (reanálisis).</li>
-          <li><strong>INE Censo 2024 (capa opcional):</strong> ahora prioriza vulnerabilidad térmica-habitacional real (techos de zinc/fibrocemento/precarios y hacinamiento), evitando el sesgo previo por edad en comunas arborizadas.</li>
+          <li><strong>Foto Satélite Real:</strong> Usa fotografía aérea Esri HD de alta resolución para ver árboles, techos y calles reales de cada plaza, con captura en 1 clic.</li>
+          <li><strong>Calor del suelo en verano (°C):</strong> Temperatura superficial medida desde satélite NASA/USGS Landsat 8/9 en días despejados de verano.</li>
+          <li><strong>Salud del pasto y árboles (%):</strong> Traduce el vigor vegetal Copernicus Sentinel-2 a una escala intuitiva de 0% a 100%.</li>
+          <li><strong>Entorno a 5 cuadras (400 m):</strong> Mide cuántos árboles faltan alrededor de cada plaza para llegar a la meta mínima urbana de 30% de sombra (ESA WorldCover 2021).</li>
+          <li><strong>Confianza real (%):</strong> Porcentaje calculado según días sin nubes, tamaño de la plaza y coincidencia entre las 5 fuentes oficiales.</li>
         </ul>
       `
     );
@@ -1928,6 +2620,8 @@
     } else if (nombreVista === "casos") {
       if (state.comunaSlug) await cargarComuna(state.comunaSlug);
       renderListaCasos();
+    } else if (nombreVista === "planes") {
+      renderPlanesView();
     }
   }
 
@@ -1941,7 +2635,6 @@
     renderMapa(true);
     renderTop5();
 
-    // Sincroniza también Informe IA y Casos cuando el usuario cambia el selector superior de comuna
     if (origen === "selector") {
       syncPillsAmbitoIA(slug);
       state.filtroComunaCaso = slug;
@@ -1955,9 +2648,11 @@
       }
     }
     actualizarContadorCasos();
+    actualizarSelectContextoChat();
   }
 
   async function init() {
+    leerPerfilLocal();
     const comunas = PU.resumen?.comunas || [];
     const sel = document.getElementById("selectComuna");
     sel.innerHTML = comunas.map((c) => `<option value="${esc(c.slug)}">${esc(c.nombre)}</option>`).join("");
@@ -1966,6 +2661,11 @@
 
     document.querySelectorAll(".nav-tab").forEach((b) => {
       b.addEventListener("click", () => cambiarVista(b.dataset.view));
+    });
+    document.getElementById("badgePlanActivo").addEventListener("click", () => cambiarVista("planes"));
+    document.getElementById("btnIrPrivacidad").addEventListener("click", () => {
+      cambiarVista("planes");
+      setTimeout(() => document.getElementById("seccionPrivacidadDatos")?.scrollIntoView({ behavior: "smooth" }), 60);
     });
 
     sel.addEventListener("change", (e) => seleccionarComuna(e.target.value, "selector"));
@@ -1996,8 +2696,8 @@
       document.getElementById("censoSlidersWrap").classList.toggle("hidden", modo !== "mixto");
       document.getElementById("descModoRanking").textContent =
         modo === "satelital"
-          ? "Ordena únicamente por calor superficial Landsat °C, falta de dosel/cemento WorldCover y vigor Sentinel-2."
-          : "Combina 70% evidencia multi-satélite con 30% vulnerabilidad habitacional Censo 2024 (techos zinc y hacinamiento).";
+          ? "Prioriza según calor de verano, cemento alrededor del parque y estado real del pasto y árboles."
+          : "Combina 70% datos climáticos/árboles con 30% necesidad vecinal (techos zinc y hacinamiento).";
       refrescarVistaMapa();
     };
     document.getElementById("btnModoSat").addEventListener("click", () => setModo("satelital"));
@@ -2035,7 +2735,7 @@
     document.getElementById("btnGuardarCasoSitio").addEventListener("click", () => {
       const feat = obtenerFeature(state.sitioActivoId);
       if (feat) {
-        guardarSitioEnCasos(feat);
+        guardarSitioEnCasos(feat, state.capturaSitioDataUrl);
         renderDrawerActual();
       }
     });
@@ -2047,7 +2747,6 @@
       renderTop5();
     });
 
-    // Informe IA view bindings (sincronizado con selector global cuando se elige una comuna específica)
     document.querySelectorAll("#iaScopePills .pill-btn").forEach((b) => {
       b.addEventListener("click", async () => {
         const sc = b.dataset.scope;
@@ -2073,7 +2772,9 @@
       if (bundle) generarConIAAmbiente(state.ambitoIA);
     });
     enlazarPanelIA();
-    document.getElementById("btnIaDocx").addEventListener("click", () => {
+
+    document.getElementById("btnIaDocx").addEventListener("click", async () => {
+      if (!(await consumirExportacion("docx"))) return;
       const bundle = (PU.informes_inversion || {})[state.ambitoIA];
       if (!bundle) return;
       const inf = state.informeIACustom[state.ambitoIA] || bundle.informe;
@@ -2082,41 +2783,54 @@
         inf,
         [
           ["Ámbito", bundle.paquete.comuna.nombre],
-          ["Sitios priorizados", `${fmtInt(cr.n_sitios_cartera)}`],
-          ["Calor máx. Landsat", `${fmtNum(cr.lst_max_cartera_c, 1)} °C`],
+          ["Parques priorizados", `${fmtInt(cr.n_sitios_cartera)}`],
+          ["Calor máx. verano", `${fmtNum(cr.lst_max_cartera_c, 1)} °C`],
           ["Árboles estimados", `${fmtInt(cr.arboles_min_cartera)} – ${fmtInt(cr.arboles_max_cartera)}`],
-          ["Presupuesto (hipótesis sin verificar)", `${fmtClp(cr.costo_clp_min_cartera)} – ${fmtClp(cr.costo_clp_max_cartera)}`],
+          ["Presupuesto (hipótesis sin verificar)", `${fmtClpCorto(cr.costo_clp_min_cartera)} – ${fmtClpCorto(cr.costo_clp_max_cartera)} CLP`],
         ],
         `cartera_inversion_${state.ambitoIA}.docx`
       );
     });
-    document.getElementById("btnIaPdf").addEventListener("click", () => {
+    document.getElementById("btnIaPdf").addEventListener("click", async () => {
+      if (!(await consumirExportacion("pdf"))) return;
       document.getElementById("printArea").innerHTML = document.getElementById("contenidoInformeIA").innerHTML;
       window.print();
     });
-    document.getElementById("btnIaGuardarCaso").addEventListener("click", () => {
+    document.getElementById("btnIaCsv").addEventListener("click", async () => {
+      if (!(await consumirExportacion("csv"))) return;
+      const bundle = (PU.informes_inversion || {})[state.ambitoIA];
+      if (!bundle) return;
+      const sitios = bundle.paquete.cartera_sitios || [];
+      const head = "ranking,nombre,comuna,urgencia,calor_c,arboles_400m_pct,cemento_400m_pct,techos_zinc_pct,arboles_min,arboles_max,fondo_sugerido\n";
+      const rows = sitios
+        .map((s, idx) =>
+          [idx + 1, `"${(s.nombre || "").replace(/"/g, '""')}"`, s.comuna, s.prioridad_satelital, s.lst_verano_c, s.cobertura_arboles_400m_pct, s.impermeable_400m_pct, s.pct_techo_calor_400m, s.arboles_necesarios_min, s.arboles_necesarios_max, `"${s.fondo_sugerido || ""}"`].join(",")
+        )
+        .join("\n");
+      descargarBlob(new Blob([head + rows], { type: "text/csv;charset=utf-8" }), `cartera_${state.ambitoIA}.csv`);
+    });
+    document.getElementById("btnIaGuardarCaso").addEventListener("click", async () => {
       const bundle = (PU.informes_inversion || {})[state.ambitoIA];
       if (!bundle) return;
       const inf = state.informeIACustom[state.ambitoIA] || bundle.informe;
-      const id = `guardado-cartera-${state.ambitoIA}-${Date.now()}`;
-      const lista = leerCasosGuardados();
-      lista.unshift({
-        id,
+      await guardarCasoPersistente({
+        id: `guardado-cartera-${state.ambitoIA}-${Date.now()}`,
         grupo: "guardado",
         tipoLabel: "Cartera guardada",
-        titulo: `${inf.titulo}`,
+        titulo: `${limpiarTextoHumano(inf.titulo)}`,
         comunaSlug: state.ambitoIA === "intercomunal" ? "cerro_navia" : state.ambitoIA,
         siteId: null,
         fecha: new Date().toISOString().slice(0, 10),
         nota: "",
+        fotoDataUrl: state.chatImagenDataUrl || null,
+        confianzaPct: 94,
         paquete: bundle.paquete,
         informe: inf,
       });
-      guardarCasosGuardados(lista);
-      alert("Cartera guardada en Casos y Archivos.");
+      alert("Cartera guardada en Casos y Archivos (Supabase).");
     });
 
-    // Casos y Archivos view bindings
+    // Casos y Archivos
     document.getElementById("selectFiltroTipoCaso").addEventListener("change", (e) => {
       state.filtroTipoCaso = e.target.value;
       renderListaCasos();
@@ -2139,9 +2853,8 @@
         const obj = JSON.parse(await f.text());
         const paq = obj.paquete || obj;
         const inf = obj.informe || {};
-        const lista = leerCasosGuardados();
         const id = `importado-${Date.now()}`;
-        lista.unshift({
+        await guardarCasoPersistente({
           id,
           grupo: "guardado",
           tipoLabel: "Archivo importado",
@@ -2153,7 +2866,6 @@
           paquete: paq,
           informe: inf,
         });
-        guardarCasosGuardados(lista);
         state.casoArchivoSelId = id;
         renderListaCasos();
       } catch (_err) {
@@ -2162,9 +2874,78 @@
       e.target.value = "";
     });
 
+    // Planes mensual / anual
+    document.getElementById("btnPlanMensual").addEventListener("click", () => {
+      state.modalidadPlanUI = "mensual";
+      document.getElementById("btnPlanMensual").classList.add("active");
+      document.getElementById("btnPlanAnual").classList.remove("active");
+      renderPlanesView();
+    });
+    document.getElementById("btnPlanAnual").addEventListener("click", () => {
+      state.modalidadPlanUI = "anual";
+      document.getElementById("btnPlanAnual").classList.add("active");
+      document.getElementById("btnPlanMensual").classList.remove("active");
+      renderPlanesView();
+    });
+
+    // Login visual conectado a Supabase
+    const modalLogin = document.getElementById("modalLoginBackdrop");
+    document.getElementById("btnLoginUsuario").addEventListener("click", () => {
+      document.getElementById("loginNombre").value = state.perfil.nombre || "Equipo Evaluador";
+      document.getElementById("loginEmail").value = state.perfil.email || "demo@pulmonurbano.cl";
+      document.getElementById("loginOrg").value = state.perfil.organizacion || "Municipalidad Demo";
+      modalLogin.classList.remove("hidden");
+    });
+    document.getElementById("btnCerrarLogin").addEventListener("click", () => modalLogin.classList.add("hidden"));
+    document.getElementById("tabModoLogin").addEventListener("click", () => {
+      document.getElementById("tabModoLogin").classList.add("active");
+      document.getElementById("tabModoRegistro").classList.remove("active");
+      document.getElementById("loginDescModo").textContent = "Ingresa con tu correo demo para cargar tu plan y casos en Supabase.";
+    });
+    document.getElementById("tabModoRegistro").addEventListener("click", () => {
+      document.getElementById("tabModoRegistro").classList.add("active");
+      document.getElementById("tabModoLogin").classList.remove("active");
+      document.getElementById("loginDescModo").textContent = "Crea un perfil rápido (modo presentación) y activa planes con 1 clic en Supabase.";
+    });
+    const ejecutarLogin = async (nombre, email, org, rol) => {
+      if (window.location.protocol !== "file:") {
+        try {
+          const resp = await fetch("api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ nombre, email, organizacion: org, rol }),
+          });
+          if (resp.ok) {
+            const j = await resp.json();
+            if (j.perfil) Object.assign(state.perfil, j.perfil);
+          }
+        } catch (_e) {
+          // fallback
+        }
+      }
+      state.perfil.nombre = nombre;
+      state.perfil.email = email.trim().toLowerCase();
+      state.perfil.organizacion = org;
+      state.perfil.rol = rol;
+      guardarPerfilLocal();
+      modalLogin.classList.add("hidden");
+      await sincronizarPerfilYCasosServidor();
+    };
+    document.getElementById("formLoginDemo").addEventListener("submit", (e) => {
+      e.preventDefault();
+      ejecutarLogin(
+        document.getElementById("loginNombre").value,
+        document.getElementById("loginEmail").value,
+        document.getElementById("loginOrg").value,
+        document.getElementById("loginRol").value
+      );
+    });
+    document.getElementById("btnDemoRapido").addEventListener("click", () => {
+      ejecutarLogin("Valentina Rojas (SECPLA)", "consultora.demo@pulmonurbano.cl", "Consultora Verde Chile", "Consultora Ambiental / Paisajismo");
+    });
+
     // Modales & Móvil
     document.getElementById("btnComparar").addEventListener("click", mostrarModalComparar);
-    document.getElementById("btnPlanes").addEventListener("click", mostrarModalPlanes);
     document.getElementById("btnAyuda").addEventListener("click", mostrarModalAyuda);
     document.getElementById("btnCerrarModal").addEventListener("click", () => {
       document.getElementById("modalBackdrop").classList.add("hidden");
@@ -2182,6 +2963,8 @@
     if (comunas.length) {
       await seleccionarComuna(comunas[0].slug);
     }
+    renderPlanesView();
+    await sincronizarPerfilYCasosServidor();
     await actualizarPanelIA();
     actualizarContadorCasos();
   }

@@ -88,6 +88,8 @@ def construir_paquete_sitio(
         "pm2_5_media": aire.get("pm2_5_media"),
         "ranking_comuna": sitio_props.get("ranking_comuna"),
         "n_sitios_comuna": comuna_resumen.get("n_sitios"),
+        "confianza_pct": sitio_props.get("confianza_pct"),
+        "salud_vegetal_pct": sitio_props.get("salud_vegetal_pct"),
     }
     if ev:
         numeros.update({
@@ -163,7 +165,27 @@ def construir_paquete_cartera(
         ),
         reverse=True,
     )
-    elegidos = [f["properties"] for f in ordenados[:n_top]]
+    elegidos: list[dict[str, Any]] = []
+    vistos_base: set[str] = set()
+    for f in ordenados:
+        prop = f["properties"]
+        clave_base = (
+            f"{prop.get('comuna_slug', '')}:"
+            f"{str(prop.get('nombre_base') or prop.get('nombre') or prop['site_id']).strip().lower()}"
+        )
+        if clave_base in vistos_base:
+            continue
+        vistos_base.add(clave_base)
+        elegidos.append(prop)
+        if len(elegidos) >= n_top:
+            break
+    if len(elegidos) < n_top:
+        usados = {s["site_id"] for s in elegidos}
+        for f in ordenados:
+            if f["properties"]["site_id"] not in usados:
+                elegidos.append(f["properties"])
+            if len(elegidos) >= n_top:
+                break
 
     cartera_sitios: list[dict[str, Any]] = []
     arb_min = 0
@@ -204,6 +226,8 @@ def construir_paquete_cartera(
             "cobertura_arboles_400m_pct": s.get("cobertura_arboles_400m_pct"),
             "impermeable_400m_pct": s.get("impermeable_400m_pct"),
             "pct_techo_calor_400m": s.get("pct_techo_calor_400m"),
+            "confianza_pct": s.get("confianza_pct"),
+            "salud_vegetal_pct": s.get("salud_vegetal_pct"),
             "arboles_necesarios_min": amin,
             "arboles_necesarios_max": amax,
             "costo_clp_min": cmin,
