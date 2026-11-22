@@ -48,7 +48,7 @@ a { color: inherit; }
 .hero-top { display: flex; align-items: center; justify-content: space-between; max-width: 1240px; margin: 0 auto 26px; }
 .marca { font-weight: 700; display: flex; align-items: center; gap: 10px; }
 .marca small { font-weight: 500; opacity: .75; }
-.logo { background: rgba(255, 255, 255, .18); border: 1px solid rgba(255, 255, 255, .35); border-radius: 50%; width: 32px; height: 32px; display: grid; place-items: center; font-size: 12px; }
+.logo { background: #fff; border: 1px solid rgba(255, 255, 255, .45); border-radius: 50%; width: 38px; height: 38px; padding: 3px; object-fit: contain; display: block; flex: none; box-shadow: 0 2px 8px rgba(0, 0, 0, .18); }
 .hero-links { display: flex; align-items: center; gap: 14px; font-size: 14px; }
 .hero-links a { text-decoration: none; opacity: .9; border-bottom: 1px solid rgba(255, 255, 255, .4); }
 .icono { background: rgba(255, 255, 255, .14); border: 1px solid rgba(255, 255, 255, .3); color: #fff; width: 34px; height: 34px; border-radius: 50%; cursor: pointer; font-size: 16px; }

@@ -78,16 +78,14 @@ h1, h2, h3, h4, p {
 }
 
 .brand-mark {
-  width: 34px;
-  height: 34px;
-  border-radius: 8px;
-  background: var(--primary);
-  color: #ffffff;
-  font-weight: 800;
-  font-size: 0.85rem;
-  letter-spacing: 0.02em;
-  display: grid;
-  place-items: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #ffffff;
+  border: 1px solid var(--border);
+  padding: 3px;
+  object-fit: contain;
+  display: block;
   flex-shrink: 0;
 }
 
@@ -1227,11 +1225,6 @@ body {
   top: 0;
   z-index: 1000;
   box-shadow: var(--shadow-sm);
-}
-
-.brand-mark {
-  background: linear-gradient(140deg, #166534, #0f766e);
-  border-radius: 10px;
 }
 
 .btn {

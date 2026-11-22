@@ -13,8 +13,8 @@ html, body { height: 100%; margin: 0; color: var(--tinta); background: #eef2f3; 
   pointer-events: none;
 }
 .barra > * { pointer-events: auto; }
-.marca { background: var(--fondo); border-radius: 999px; padding: 8px 14px 8px 8px; box-shadow: var(--sombra); font-weight: 700; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
-.marca-logo { background: var(--acento); color: #fff; border-radius: 50%; width: 28px; height: 28px; display: grid; place-items: center; font-size: 12px; }
+.marca { background: var(--fondo); border-radius: 999px; padding: 5px 14px 5px 6px; box-shadow: var(--sombra); font-weight: 700; display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+.marca-logo { background: #fff; border: 1px solid var(--linea); border-radius: 50%; width: 32px; height: 32px; padding: 2px; object-fit: contain; display: block; flex: none; }
 .zonas { display: flex; gap: 6px; background: var(--fondo); border-radius: 999px; padding: 5px; box-shadow: var(--sombra); overflow-x: auto; }
 .zona { border: 0; background: transparent; padding: 8px 14px; border-radius: 999px; font: inherit; font-weight: 600; color: var(--suave); cursor: pointer; white-space: nowrap; }
 .zona[aria-pressed="true"] { background: var(--acento); color: #fff; }
