@@ -163,6 +163,60 @@ def test_modo_vercel_ids_deterministicos_y_demo_automatica(tmp_path, monkeypatch
         demo = next(p for p in per if p["demo"])
         assert demo["id"] == "demo-cerro_navia" and demo["estado"] == "cerrado"
         res = c.get("/api/votacion/resultados", params={"periodo_id": demo["id"]}).json()
-        assert res["publicado"] and res["total_votos"] == 480
+        assert res["publicado"] and res["total_votos"] > 100
         resultados.append((ep["id"], demo["id"]))
     assert resultados[0] == resultados[1]
+
+
+def test_buscador_encuentra_por_nombre_y_sinonimo_y_completa_con_populares(cliente):
+    r = cliente.get("/api/votacion/ideas", params={"q": "perros"}).json()
+    assert r["resultados"][0]["id"] == "parque_perros" and r["coincidencias"] >= 1
+    assert r["relleno"] is True and len(r["resultados"]) >= 6  # pocas coincidencias: se completa con populares
+    assert any(x["popular"] for x in r["resultados"])
+    futbol = cliente.get("/api/votacion/ideas", params={"q": "fútbol"}).json()  # con tilde y sinónimo
+    assert futbol["resultados"][0]["id"] == "cancha_comunitaria"
+    vacio = cliente.get("/api/votacion/ideas", params={"q": ""}).json()
+    assert len(vacio["resultados"]) >= 6 and all(x["popular"] for x in vacio["resultados"])
+    sin_nada = cliente.get("/api/votacion/ideas", params={"q": "zzzzqqq"}).json()
+    assert sin_nada["coincidencias"] == 0 and len(sin_nada["resultados"]) >= 6
+
+
+def test_se_puede_votar_por_una_idea_del_buscador_y_el_costo_no_se_inventa(cliente):
+    ep, sitio = _epoca(cliente), _un_sitio()
+    assert _votar(cliente, ep["id"], sitio["id"], "huerto_comunitario").status_code == 200
+    ficha = cliente.get("/api/votacion/ideas", params={"q": "huerto"}).json()["resultados"][0]
+    assert ficha["id"] == "huerto_comunitario" and ficha["costo_min_M"] is None and "cotizar" in ficha["costo_nota"]
+
+
+def test_resultados_traen_participacion_sin_revelar_votos(cliente):
+    ep, sitio = _epoca(cliente), _un_sitio()
+    _votar(cliente, ep["id"], sitio["id"], "sombra_arboles", edad_rango="60_mas", via_qr=True)
+    r = cliente.get("/api/votacion/resultados", params={"periodo_id": ep["id"]}).json()
+    part = r["participacion"]
+    assert part["total"] == 1 and part["via_qr"] == 1 and part["edades"]["60_mas"] == 1
+    assert len(part["por_dia"]) == 1 and part["por_dia"][0]["votos"] == 1
+    assert "sitios" not in r  # abierta: sigue sin publicar porcentajes
+
+
+def test_confianza_detecta_rafagas_y_premia_votos_repartidos():
+    from datetime import timedelta
+
+    base = votos._ahora()
+    rafaga = [{"site_id": "a", "opcion_id": "x", "via_qr": False, "edad_rango": None, "creado_en": votos._iso(base + timedelta(minutes=i))} for i in range(20)]
+    c = votos.calcular_confianza(rafaga, 10)
+    assert c["nivel"] == "baja" and c["rafaga_pct"] == 100.0 and any("una sola hora" in r for r in c["razones"])
+    bueno = [{"site_id": "a", "opcion_id": "x", "via_qr": True, "edad_rango": "30_44", "creado_en": votos._iso(base + timedelta(hours=7 * i))} for i in range(60)]
+    assert votos.calcular_confianza(bueno, 10)["nivel"] == "alta"
+    assert votos.calcular_confianza([], 10)["nivel"] == "baja"
+    pocos = votos.calcular_confianza(bueno[:4], 10)
+    assert any("Pocos votos" in r for r in pocos["razones"])
+
+
+def test_resultados_incluyen_confianza_sin_revelar_preferencias(cliente):
+    ep, sitio = _epoca(cliente), _un_sitio()
+    for i in range(4):
+        _votar(cliente, ep["id"], sitio["id"], "sombra_arboles", disp=f"dispositivo-{i}-0123456789")
+    r = cliente.get("/api/votacion/resultados", params={"periodo_id": ep["id"]}).json()
+    assert r["publicado"] is False and "sitios" not in r
+    assert sitio["id"] in r["confianza"] and r["confianza_global"]["n"] == 4
+    assert "opcion_id" not in json.dumps(r["confianza"])

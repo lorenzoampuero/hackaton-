@@ -1853,7 +1853,7 @@
       const btnId = `btnSaveChat_${Date.now()}_${Math.floor(Math.random() * 1000)}`;
       div.innerHTML = `
         <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:4px;">
-          <strong>Asistente Pulmón Urbano</strong>
+          <strong>Asistente RE-VIDA</strong>
           <span class="badge badge-verificado">${esc(extra.modelo || "deepseek-flash")}</span>
         </div>
         <div>${bodyHtml}</div>
@@ -1889,7 +1889,7 @@
               hallazgos: [],
               acciones_priorizadas: [],
               fondos_recomendados: [],
-              limitaciones_y_verificacion: ["Respuesta generada y guardada desde el Asistente IA de Pulmón Urbano."],
+              limitaciones_y_verificacion: ["Respuesta generada y guardada desde el Asistente IA de RE-VIDA."],
             },
           });
           document.getElementById(btnId).textContent = "Guardado en Casos ✓";
@@ -2579,7 +2579,7 @@
 
   function mostrarModalAyuda() {
     abrirModal(
-      "Cómo leer Pulmón Urbano en 1 minuto (sin tecnicismos)",
+      "Cómo leer RE-VIDA en 1 minuto (sin tecnicismos)",
       `
         <ul>
           <li><strong>Foto Satélite Real:</strong> Usa fotografía aérea Esri HD de alta resolución para ver árboles, techos y calles reales de cada plaza, con captura en 1 clic.</li>

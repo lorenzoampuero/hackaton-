@@ -1,1 +1,1 @@
-"""Pulmón Urbano v4 — pipeline por lotes que genera los datos del sitio estático."""
+"""RE-VIDA v4 — pipeline por lotes que genera los datos del sitio estático."""

@@ -220,6 +220,8 @@ def construir_comuna(slug: str, todas: list[dict[str, Any]], refs: dict[str, Per
             "semaforo": {"color": color, "etiqueta": etiqueta, "indice": indice},
             "resumen": resumen_frase(datos, color) if indice is not None else "Faltan datos del satélite para este sitio.",
             "datos": datos,
+            "poblacion_400m": round(pop_v) if (pop_v := _num(p.get("pop_400m"))) is not None else None,
+            "pct_60_mas": _num(p.get("pct_60_mas_400m")),
             "poca_confianza": p.get("confianza") == "baja",
             "mantencion_M": [round(area * 1625 / 1e6, 1), round(area * 2962 / 1e6, 1)],
             "opciones": puntuar_opciones(p, catalogo)[:OPCIONES_RECOMENDADAS],
@@ -273,6 +275,15 @@ def ejecutar_todas(comunas: list[dict[str, Any]], cfg: dict[str, Any]) -> None:
     publico = {k: v for k, v in catalogo.items() if k != "nota"}
     publico["nota"] = catalogo.get("nota", "")
     escribir_json(SALIDA / "opciones.json", publico)
+    # fondos donde postular cada opción: solo los que el catálogo interno (data/intervenciones.json) asocia a una intervención equivalente
+    interv = leer_json(RAIZ / "data" / "intervenciones.json")
+    equivalente = {"sombra_arboles": "arborizacion_calles", "plantas_nativas": "reconversion_cesped", "riego_eficiente": "riego_eficiente", "refugio_climatico": "sombra_refugios"}
+    fondos = {f["id"]: {"nombre": f["nombre"], "institucion": f["institucion"], "enfoque": f["enfoque"], "requisito_evidencia": f["requisito_evidencia"]} for f in interv["fondos_publicos"]}
+    por_opcion = {op: [f["id"] for f in interv["fondos_publicos"] if iv in f.get("aplica_para", [])] for op, iv in equivalente.items()}
+    escribir_json(SALIDA / "fondos.json", {"nota": "Según el catálogo interno de RE-VIDA; hay que confirmar las bases vigentes de cada fondo.", "fondos": fondos, "por_opcion": por_opcion})
+    # nombres de las ideas del buscador: el tablero institucional los necesita para mostrar lo que votaron
+    ideas = leer_json(RAIZ / "data" / "ideas_busqueda.json")["ideas"]
+    escribir_json(SALIDA / "ideas.json", {"ideas": [{"id": i["id"], "nombre": i["nombre"], "descripcion": i["descripcion"]} for i in ideas]})
 
 
 if __name__ == "__main__":

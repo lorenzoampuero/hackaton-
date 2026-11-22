@@ -1,1 +1,1 @@
-"""Pulmón Urbano — Backend de diagnóstico socioambiental satelital."""
+"""RE-VIDA — Backend de diagnóstico socioambiental satelital."""

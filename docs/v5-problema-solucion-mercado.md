@@ -1,4 +1,4 @@
-# Pulmón Urbano v5 — Problema, solución y estudio de mercado
+# RE-VIDA v5 — Problema, solución y estudio de mercado
 
 Nov 22, 2026 · Borrador para revisar. Todos los montos son **hipótesis (sin verificar)** hasta cotizarlos con un municipio. Fuentes al final. Las cifras de prensa y de comunicados oficiales no son presupuestos detallados.
 
@@ -21,7 +21,7 @@ Lo que falta no es solo plata: es una **base de datos comparable** que diga, lug
 
 ## 2. Solución
 
-**Pulmón Urbano es un mediador de datos: convierte las condiciones satelitales de cada área verde y la votación de los vecinos en una base de datos que dice dónde invertir y en qué.**
+**RE-VIDA es un mediador de datos: convierte las condiciones satelitales de cada área verde y la votación de los vecinos en una base de datos que dice dónde invertir y en qué.**
 
 ### Para el vecino (gratis)
 - Elige su comuna y ve el mapa en bloques de color: verde (bien), amarillo (atención), rojo (necesita ayuda), gris (sin datos suficientes).
@@ -102,7 +102,7 @@ Regla práctica para la app: **el costo real de una obra es la inversión inicia
 | **Infraestructura deportiva** | Más de 26.000 recintos públicos, pero 88 % reporta dificultad de acceso (citado en una nota de la Cámara) | Existe, pero no se usa |
 
 ### 3.6 Lo que NO encontré (y por qué importa)
-- **Ningún caso documentado de «el vecino quería cancha y le construyeron piscina».** Es probable que pase, pero nadie lo mide. **Ese vacío es lo que llena Pulmón Urbano.**
+- **Ningún caso documentado de «el vecino quería cancha y le construyeron piscina».** Es probable que pase, pero nadie lo mide. **Ese vacío es lo que llena RE-VIDA.**
 - **Ningún caso específico de parque con pasto europeo que se secó** en una ciudad árida (Calama, Copiapó). Solo debate general sobre pasto y sequía. El Parque Oasis de Calama aparece como obra valorada.
 - **Costo unitario verificado de un árbol plantado en Chile.**
 - **Cifras de piscina nueva simple.**

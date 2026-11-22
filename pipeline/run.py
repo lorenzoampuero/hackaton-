@@ -46,7 +46,7 @@ def agregar_comuna(nombre: str) -> str:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="Pipeline de Pulmón Urbano")
+    ap = argparse.ArgumentParser(description="Pipeline de RE-VIDA")
     ap.add_argument("--pasos", default=",".join(ORDEN), help="lista separada por comas, p. ej. 01,02")
     ap.add_argument("--comunas", default="", help="slugs separados por comas; vacío = todas")
     ap.add_argument("--agregar", default="", help="nombre de una comuna nueva (tal como figura en OSM)")

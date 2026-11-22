@@ -1,4 +1,4 @@
-"""Backend FastAPI de Pulmón Urbano (local y Vercel Serverless):
+"""Backend FastAPI de RE-VIDA (local y Vercel Serverless):
 - Sirve la aplicación web estática (local) y los endpoints /api/*.
 - Redacta informes y responde en el Asistente IA multimodal sin exponer claves al navegador.
 - Persiste perfiles, planes ("Plan aceptado"), casos con fotografía y consultas IA en Supabase.
@@ -27,7 +27,7 @@ mod_05 = importlib.import_module("pipeline.05_senales")
 mod_06 = importlib.import_module("pipeline.06_paquete_caso")
 mod_07 = importlib.import_module("pipeline.07_informe_ia")
 
-app = FastAPI(title="Pulmón Urbano — API y Servidor", docs_url=None, redoc_url=None)
+app = FastAPI(title="RE-VIDA — API y Servidor", docs_url=None, redoc_url=None)
 
 from app.votos import router as router_votos  # noqa: E402  (votación vecinal: épocas, votos y resultados)
 
@@ -105,7 +105,7 @@ PLANES_CONFIG: dict[str, dict[str, Any]] = {
     },
 }
 
-INSTRUCCIONES_CHAT_IA = """Eres el Asistente Territorial de Pulmón Urbano en Chile.
+INSTRUCCIONES_CHAT_IA = """Eres el Asistente Territorial de RE-VIDA en Chile.
 Ayudas a alcaldes, equipos municipales (SECPLA/Ornato), consultoras ambientales e inmobiliarias a decidir dónde plantar árboles y reducir calor urbano.
 Reglas obligatorias:
 1. Habla en español claro, cercano y sin tecnicismos innecesarios: explica qué significan los números en palabras simples (ej. calor del suelo en °C, porcentaje de árboles vs cemento, porcentaje de techos de zinc, confianza del dato %). Evita jerga cruda como 'NDMI z-score' sin traducirla.
@@ -427,7 +427,7 @@ def _llamar_chat_llm(req: PedidoChat, contexto_json: str) -> tuple[str, str]:
     base_url = os.environ.get("OPENAI_BASE_URL", "https://api.deepseek.com/v1").rstrip("/")
     api_key = os.environ["OPENAI_API_KEY"].strip()
 
-    prompt_texto = f"Datos verificados de Pulmón Urbano:\n{contexto_json}\n\nPregunta del usuario: {req.pregunta}"
+    prompt_texto = f"Datos verificados de RE-VIDA:\n{contexto_json}\n\nPregunta del usuario: {req.pregunta}"
     if req.imagen_data_url:
         prompt_texto += "\n(El usuario adjuntó una fotografía/captura del parque para análisis visual y recomendación práctica.)"
 

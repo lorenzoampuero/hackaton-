@@ -1,4 +1,4 @@
-# Pulmón Urbano — Plataforma Multi-Satélite y Cartera de Arbolado Municipal
+# RE-VIDA — Plataforma Multi-Satélite y Cartera de Arbolado Municipal
 
 Plataforma cívica y municipal de priorización territorial de **calor superficial, arborización urbana, vigor vegetal y vulnerabilidad habitacional** para el Gran Santiago, construida sobre datos públicos y reproducibles.
 
@@ -49,7 +49,8 @@ python3 -m http.server 8765 -d web
 ## Vista del vecino y votación (nuevo)
 
 - `web/vecino.html`: mapa grande para vecinos. Eligen su comuna (o entran con un QR: `vecino.html?zona=cerro_navia&sitio=<id>&qr=1`), tocan un punto, ven 4 datos en palabras simples y votan qué les gustaría que se construya (con un campo «Otro»).
-- `web/institucion.html`: vista para instituciones. Muestra los votos por lugar, los porcentajes (solo cuando la votación cierra), la inversión aproximada y exporta el informe a Markdown o PDF.
+- `web/institucion.html`: tablero para instituciones con gráficos (mapa de la demanda, lo que más piden, votos en el tiempo, quiénes votaron, necesidad y demanda, inversión aproximada), modo claro y oscuro, filtro por idea, vista en tabla de cada gráfico y exportación a Markdown o PDF. Los porcentajes se publican solo cuando la votación cierra. Incluye un índice de confianza por resultado (cantidad de votos, QR, edad declarada y detección de ráfagas), hallazgos automáticos, costo a 5 años (obra + mantención), fondos donde postular (según el catálogo interno), modo en vivo, comparador de las 4 comunas y exportación a GeoJSON y CSV.
+- En la encuesta del vecino, «Otra idea» se reemplazó por un buscador (`/api/votacion/ideas`, datos en `data/ideas_busqueda.json`); por ahora lee un archivo y más adelante leerá una tabla de la base de datos.
 - Los datos simples y las opciones recomendadas salen del paso 08 (`python -m pipeline.run --pasos 08`) y del catálogo `data/opciones_votacion.json` (cada rango de costo trae su fuente o dice «por cotizar»).
 - Los votos se guardan en Supabase si existen las tablas (`supabase/migrations/20261122_votacion.sql`, se ejecuta una vez en tu proyecto) y, si no, en SQLite local (`data/votos_local.db`).
 - `PULMON_ADMIN_TOKEN` (en `.env`) activa los botones de cerrar/abrir votaciones; `PULMON_MIN_VOTOS` fija el mínimo de votos para mostrar porcentajes (por defecto 10).

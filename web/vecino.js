@@ -60,11 +60,12 @@
   async function iniciar() {
     mostrarCargando("Cargando el mapa…");
     try {
-      const [cat, zonas] = await Promise.all([pedir("data/vecino/opciones.json"), pedir("api/votacion/zonas")]);
+      const [cat, ideas, zonas] = await Promise.all([pedir("data/vecino/opciones.json"), pedir("data/vecino/ideas.json"), pedir("api/votacion/zonas")]);
+      ideas.ideas.forEach((o) => { estado.catalogo[o.id] = { ...o, costo_min_M: null, costo_max_M: null, costo_nota: "por cotizar con el municipio (no hay dato verificado)", ejemplos: [] }; });
       cat.opciones.forEach((o) => { estado.catalogo[o.id] = o; });
       estado.zonas = zonas.zonas;
     } catch (e) {
-      mostrarError("No pudimos cargar los datos. Abre esta página desde el servidor de Pulmón Urbano (no como archivo). " + e.message);
+      mostrarError("No pudimos cargar los datos. Abre esta página desde el servidor de RE-VIDA (no como archivo). " + e.message);
       return;
     }
     crearMapa();
@@ -175,7 +176,7 @@
     if (estado.epoca && estado.epoca.demo) nodos.push(h("div", { class: "demo" }, "DEMOSTRACIÓN: estos votos son simulados."));
     if (!estado.sel) {
       nodos.push(
-        h("h1", {}, estado.zona ? estado.zona.nombre : "Pulmón Urbano"),
+        h("h1", {}, estado.zona ? estado.zona.nombre : "RE-VIDA"),
         h("p", { class: "sub" }, "Toca un punto del mapa para ver cómo está ese lugar y votar qué te gustaría que se construya."),
         estado.epoca ? textoEpoca() : null,
         h("h2", {}, "Qué significan los colores"),
@@ -223,42 +224,60 @@
 
   function formulario(s) {
     const recomendadas = s.opciones.map((o) => ({ ...estado.catalogo[o.id], razon: o.razon })).filter((o) => o.id);
-    const ids = new Set(recomendadas.map((o) => o.id));
-    const otras = Object.values(estado.catalogo).filter((o) => !ids.has(o.id) && s.area_m2 >= (o.min_area_m2 || 0));
     let elegida = null;
-    const lista = h("div", { role: "radiogroup", "aria-label": "Opciones" });
-    const campoOtro = h("textarea", { rows: "3", maxlength: "280", placeholder: "Cuéntanos qué te gustaría (máximo 280 letras)", hidden: true, "aria-label": "Tu idea" });
+    const lista = h("div", { role: "radiogroup", "aria-label": "Opciones recomendadas para este lugar" });
     const edad = h("select", { "aria-label": "Tu edad (opcional)" }, EDADES.map(([v, t]) => h("option", { value: v }, t)));
     const error = h("p", { class: "error", hidden: true });
     const boton = h("button", { class: "boton", type: "button", disabled: true }, "Votar");
+    const eleccion = h("p", { class: "eleccion", hidden: true });
+    const cajaBusqueda = h("div", { class: "busqueda-resultados", "aria-live": "polite" });
+    const entrada = h("input", { type: "search", class: "buscador", placeholder: "Busca una idea: huerto, perros, feria, baños…", "aria-label": "Buscar una idea", autocomplete: "off", maxlength: "60" });
 
-    function tarjeta(o, razon) {
-      const input = h("input", { type: "radio", name: "opcion", value: o.id });
-      const ejemplos = (o.ejemplos || []);
+    function elegir(o) {
+      elegida = o.id;
+      boton.disabled = false;
+      eleccion.hidden = false;
+      eleccion.textContent = "Tu elección: " + o.nombre;
+    }
+
+    function tarjeta(o, razon, etiqueta) {
+      const input = h("input", { type: "radio", name: "opcion", value: o.id, checked: o.id === elegida });
+      const ejemplos = o.ejemplos || [];
       const caja = h("div", { class: "ejemplos", hidden: true }, ejemplos.map((x) => h("div", {}, h("a", { href: x.url, target: "_blank", rel: "noopener noreferrer" }, x.titulo))));
       const ver = ejemplos.length ? h("button", { class: "enlace", type: "button", onclick: (ev) => { ev.preventDefault(); caja.hidden = !caja.hidden; } }, "Ver obras parecidas con fuente") : null;
-      input.addEventListener("change", () => { elegida = o.id; campoOtro.hidden = true; boton.disabled = false; });
-      return h("div", {}, h("label", { class: "opcion" }, input, h("span", { class: "nombre" }, o.nombre),
-        razon ? h("span", { class: "razon" }, razon) : h("span", { class: "razon" }, o.descripcion),
+      input.addEventListener("change", () => elegir(o));
+      return h("div", {}, h("label", { class: "opcion" }, input,
+        h("span", { class: "nombre" }, o.nombre), etiqueta ? h("span", { class: "etiqueta" }, etiqueta) : null,
+        h("span", { class: "razon" }, razon || o.descripcion),
         h("span", { class: "costo" }, costo(o), " ", h("em", {}, "(" + (o.costo_nota || "") + ")"))), ver, caja);
     }
-    recomendadas.forEach((o) => lista.append(tarjeta(o, o.razon)));
-    if (otras.length) {
-      const masCaja = h("div", { hidden: true }, otras.map((o) => tarjeta(o, "")));
-      lista.append(h("button", { class: "enlace", type: "button", onclick: () => { masCaja.hidden = !masCaja.hidden; } }, "Ver más opciones"), masCaja);
+
+    recomendadas.forEach((o) => lista.append(tarjeta(o, o.razon, "Recomendada")));
+
+    let temporizador = null, secuencia = 0;
+    async function buscar(q) {
+      const mia = ++secuencia;
+      cajaBusqueda.replaceChildren(h("p", { class: "sub" }, "Buscando…"));
+      try {
+        const r = await pedir("api/votacion/ideas?q=" + encodeURIComponent(q) + "&comuna=" + encodeURIComponent(estado.zona.slug) + "&site_id=" + encodeURIComponent(s.id));
+        if (mia !== secuencia) return;
+        const titulo = !q.trim() ? "Ideas populares"
+          : r.coincidencias > 0 ? r.coincidencias + (r.coincidencias === 1 ? " resultado" : " resultados") + " para «" + q.trim() + "»" + (r.relleno ? " y otras ideas populares" : "")
+          : "No encontramos «" + q.trim() + "». Mira estas ideas populares:";
+        cajaBusqueda.replaceChildren(h("p", { class: "sub" }, titulo), ...r.resultados.map((o) => tarjeta(o, o.descripcion, o.recomendada ? "Recomendada para este lugar" : o.popular ? "Popular" : null)));
+      } catch (e) {
+        if (mia === secuencia) cajaBusqueda.replaceChildren(h("p", { class: "error" }, "No pudimos buscar ahora: " + e.message));
+      }
     }
-    const inputOtro = h("input", { type: "radio", name: "opcion", value: "otro" });
-    inputOtro.addEventListener("change", () => { elegida = "otro"; campoOtro.hidden = false; campoOtro.focus(); boton.disabled = false; });
-    lista.append(h("label", { class: "opcion" }, inputOtro, h("span", { class: "nombre" }, "Otra idea"), h("span", { class: "razon" }, "Escribe lo que te gustaría que hubiera aquí.")), campoOtro);
+    entrada.addEventListener("input", () => { clearTimeout(temporizador); temporizador = setTimeout(() => buscar(entrada.value), 250); });
+    buscar("");
 
     boton.addEventListener("click", async () => {
       error.hidden = true;
-      const texto = campoOtro.value.trim();
       if (!elegida) return;
-      if (elegida === "otro" && texto.length < 3) { error.textContent = "Cuéntanos tu idea (mínimo 3 letras)."; error.hidden = false; return; }
       boton.disabled = true; boton.textContent = "Guardando…";
       try {
-        await pedir("api/votacion/votar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ periodo_id: estado.epoca.id, site_id: s.id, opcion_id: elegida, otro_texto: elegida === "otro" ? texto : null, edad_rango: edad.value || null, dispositivo: dispositivo(), via_qr: llegoPorQr }) });
+        await pedir("api/votacion/votar", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ periodo_id: estado.epoca.id, site_id: s.id, opcion_id: elegida, edad_rango: edad.value || null, dispositivo: dispositivo(), via_qr: llegoPorQr }) });
         estado.mis.add(s.id);
         estado.conteo[s.id] = (estado.conteo[s.id] || 0) + 1;
         const m = estado.marcadores.get(s.id);
@@ -269,7 +288,9 @@
         error.textContent = e.message; error.hidden = false; boton.disabled = false; boton.textContent = "Votar";
       }
     });
-    return h("div", {}, lista, h("label", { class: "sub" }, "Tu edad (opcional, ayuda a que los resultados representen a todos)"), edad, error, boton);
+    return h("div", {}, lista,
+      h("h2", {}, "¿Se te ocurre otra cosa? Búscala"), entrada, cajaBusqueda,
+      h("label", { class: "sub" }, "Tu edad (opcional, ayuda a que los resultados representen a todos)"), edad, eleccion, error, boton);
   }
 
   function gracias(s) {

@@ -1,0 +1,29 @@
+{
+  "version": "2026-11-22",
+  "nota": "Ideas extra para el buscador de la vista del vecino. Por ahora es un archivo; más adelante sale de una tabla de la base de datos. Ninguna trae costo verificado: la app dice «por cotizar». Las 14 opciones de data/opciones_votacion.json también se pueden buscar.",
+  "populares": ["huerto_comunitario", "parque_perros", "feria_vecinal", "banos_publicos", "anfiteatro", "biblioteca_aire_libre", "ciclovia_bicicletero", "punto_limpio"],
+  "ideas": [
+    {"id": "huerto_comunitario", "nombre": "Huerto comunitario", "descripcion": "Cajones de cultivo para que los vecinos siembren verduras y hierbas.", "palabras": ["huerta", "cultivo", "verduras", "plantas", "comida", "siembra"]},
+    {"id": "parque_perros", "nombre": "Espacio para perros", "descripcion": "Un sector cercado para que las mascotas corran sueltas, con bebedero y bolsas.", "palabras": ["mascotas", "perro", "perros", "canino", "paseo"]},
+    {"id": "feria_vecinal", "nombre": "Espacio para ferias vecinales", "descripcion": "Un lugar despejado y con enchufes para ferias y encuentros los fines de semana.", "palabras": ["feria", "mercado", "emprendedores", "ferias", "encuentro"]},
+    {"id": "banos_publicos", "nombre": "Baños públicos", "descripcion": "Baños limpios y accesibles para quienes usan el lugar.", "palabras": ["bano", "servicios higienicos", "wc"]},
+    {"id": "anfiteatro", "nombre": "Escenario o anfiteatro", "descripcion": "Un escenario al aire libre para música, teatro y actividades del barrio.", "palabras": ["musica", "teatro", "conciertos", "show", "escenario", "cultura"]},
+    {"id": "biblioteca_aire_libre", "nombre": "Biblioteca al aire libre", "descripcion": "Un punto de libros para leer o intercambiar bajo sombra.", "palabras": ["libros", "lectura", "leer", "biblioteca"]},
+    {"id": "ciclovia_bicicletero", "nombre": "Bicicletero y ciclovía", "descripcion": "Estacionamiento seguro para bicicletas y conexión con ciclovías.", "palabras": ["bicicleta", "bici", "ciclista", "ciclovia", "bicicletas"]},
+    {"id": "punto_limpio", "nombre": "Punto limpio de reciclaje", "descripcion": "Contenedores para reciclar vidrio, plástico, papel y pilas.", "palabras": ["reciclaje", "reciclar", "basura", "residuos", "contenedores"]},
+    {"id": "compostera", "nombre": "Compostera comunitaria", "descripcion": "Un lugar para convertir restos de comida y poda en tierra para el huerto.", "palabras": ["compost", "tierra", "residuos organicos", "abono"]},
+    {"id": "mural_arte", "nombre": "Mural y arte urbano", "descripcion": "Murales y obras hechas con artistas y vecinos del barrio.", "palabras": ["mural", "arte", "pintura", "graffiti", "artistas"]},
+    {"id": "juegos_agua", "nombre": "Juegos de agua", "descripcion": "Una fuente o rociadores para refrescarse en verano.", "palabras": ["fuente", "agua", "refrescarse", "piletas", "verano", "calor", "rociadores"]},
+    {"id": "mesas_juegos", "nombre": "Mesas de ajedrez y juegos de mesa", "descripcion": "Mesas fijas bajo sombra para jugar ajedrez, naipes o dominó.", "palabras": ["ajedrez", "domino", "naipes", "cartas", "mesas", "adultos mayores"]},
+    {"id": "pista_trote", "nombre": "Circuito para caminar y trotar", "descripcion": "Un camino liso y con sombra para caminar, trotar o pasear.", "palabras": ["trotar", "correr", "caminar", "running", "pista", "caminata"]},
+    {"id": "wifi_gratis", "nombre": "Wifi gratuito", "descripcion": "Internet libre para estudiar, trabajar o conectarse.", "palabras": ["internet", "wifi", "conexion", "estudiar"]},
+    {"id": "camaras_seguridad", "nombre": "Cámaras y alarmas comunitarias", "descripcion": "Cámaras de seguridad y botones de alerta conectados con el municipio.", "palabras": ["camaras", "seguridad", "alarma", "vigilancia", "delincuencia"]},
+    {"id": "paneles_solares", "nombre": "Luz con paneles solares", "descripcion": "Postes y luminarias que funcionan con energía solar.", "palabras": ["solar", "energia", "luz", "iluminacion", "paneles"]},
+    {"id": "pergola_toldo", "nombre": "Pérgola o toldos", "descripcion": "Estructuras con sombra para sentarse o hacer actividades.", "palabras": ["sombra", "techo", "toldo", "pergola", "sombreadero"]},
+    {"id": "kiosco_cafe", "nombre": "Kiosco o cafetería", "descripcion": "Un pequeño local para vender comida y bebidas a quienes visitan el lugar.", "palabras": ["cafe", "comida", "kiosko", "quiosco", "cafeteria", "comer"]},
+    {"id": "cancha_tenis_pickleball", "nombre": "Cancha de tenis o pickleball", "descripcion": "Una cancha para deportes de raqueta abierta al barrio.", "palabras": ["tenis", "raqueta", "pickleball", "padel", "deporte"]},
+    {"id": "sala_comunitaria", "nombre": "Sala comunitaria", "descripcion": "Un espacio cerrado para reuniones, talleres y actividades de la junta de vecinos.", "palabras": ["sede", "reuniones", "talleres", "junta de vecinos", "club", "multiuso"]},
+    {"id": "senderos_accesibles", "nombre": "Senderos accesibles", "descripcion": "Caminos planos y rampas para sillas de ruedas, coches y personas mayores.", "palabras": ["accesibilidad", "rampa", "silla de ruedas", "discapacidad", "universal", "coches"]},
+    {"id": "observatorio_aves", "nombre": "Jardín de flores para abejas y aves", "descripcion": "Plantas que atraen abejas, mariposas y aves al barrio.", "palabras": ["aves", "abejas", "mariposas", "flores", "biodiversidad", "naturaleza", "pajaros"]}
+  ]
+}
