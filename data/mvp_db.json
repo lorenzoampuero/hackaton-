@@ -12,7 +12,7 @@
       "precio_clp": 153000,
       "exportaciones_usadas": 0,
       "exportaciones_limite": 500,
-      "informes_ia_usados": 2,
+      "informes_ia_usados": 4,
       "informes_ia_limite": 15,
       "estado": "activo"
     },
@@ -603,6 +603,26 @@
     }
   ],
   "consultas": [
+    {
+      "user_email": "pytest.demo@pulmonurbano.cl",
+      "comuna_slug": "cerro_navia",
+      "site_id": null,
+      "caso_id": null,
+      "pregunta": "¿Qué plantar?",
+      "tiene_imagen": false,
+      "respuesta": "Priorizar Parque Javiera Carrera (41,4 °C).",
+      "modelo": "deepseek:deepseek-flash"
+    },
+    {
+      "user_email": "pytest.demo@pulmonurbano.cl",
+      "comuna_slug": "cerro_navia",
+      "site_id": null,
+      "caso_id": null,
+      "pregunta": "¿Qué plantar?",
+      "tiene_imagen": false,
+      "respuesta": "Priorizar Parque Javiera Carrera (41,4 °C).",
+      "modelo": "deepseek:deepseek-flash"
+    },
     {
       "user_email": "valentina.test@pulmonurbano.cl",
       "comuna_slug": "cerro_navia",
