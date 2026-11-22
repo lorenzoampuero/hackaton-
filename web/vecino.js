@@ -276,10 +276,13 @@
 
     function tarjeta(o, razon, etiqueta) {
       const input = h("input", { type: "radio", name: "opcion", value: o.id, checked: o.id === elegida });
+      const ejemplos = o.ejemplos || [];
+      const caja = h("div", { class: "ejemplos", hidden: true }, ejemplos.map((x) => h("div", {}, h("a", { href: x.url, target: "_blank", rel: "noopener noreferrer" }, x.titulo_vecino || x.titulo.replace(/:.*$/, "")))));
+      const ver = ejemplos.length ? h("button", { class: "enlace", type: "button", onclick: (ev) => { ev.preventDefault(); caja.hidden = !caja.hidden; } }, "Ver proyectos parecidos con fuente") : null;
       input.addEventListener("change", () => elegir(o));
-      return h("label", { class: "opcion" }, input,
+      return h("div", {}, h("label", { class: "opcion" }, input,
         h("span", { class: "nombre" }, o.nombre), etiqueta ? h("span", { class: "etiqueta" }, etiqueta) : null,
-        h("span", { class: "razon" }, razon || o.descripcion));
+        h("span", { class: "razon" }, razon || o.descripcion)), ver, caja);
     }
 
     recomendadas.forEach((o) => lista.append(tarjeta(o, o.razon, "Recomendada")));

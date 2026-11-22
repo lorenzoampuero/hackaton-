@@ -52,6 +52,9 @@ button, a, .opcion { touch-action: manipulation; -webkit-tap-highlight-color: tr
 .opcion input { margin-right: 8px; accent-color: var(--acento); }
 .opcion .nombre { font-weight: 700; font-size: 14.5px; }
 .opcion .razon { display: block; color: var(--suave); font-size: 12.5px; margin: 3px 0 0 24px; }
+.ejemplos { margin: 6px 0 0 24px; font-size: 12px; display: grid; gap: 4px; }
+.ejemplos a { color: var(--acento); }
+.enlace { background: none; border: 0; color: var(--acento); font: inherit; font-size: 12.5px; padding: 4px 0 0 24px; cursor: pointer; text-decoration: underline; }
 textarea, select { width: 100%; font: inherit; font-size: 16px; min-height: 44px; border: 2px solid var(--linea); border-radius: 12px; padding: 9px 10px; margin-top: 8px; background: #fff; }
 .boton { width: 100%; min-height: 48px; border: 0; border-radius: 14px; background: var(--acento); color: #fff; font: inherit; font-weight: 700; font-size: 16px; padding: 14px; margin-top: 14px; cursor: pointer; }
 .boton:disabled { background: #b9c6bf; cursor: not-allowed; }

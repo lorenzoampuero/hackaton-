@@ -413,7 +413,7 @@
   const confDe = (sid) => (estado.res && estado.res.confianza && estado.res.confianza[sid]) || null;
   const ETI_CONF = { alta: "Alta", media: "Media", baja: "Baja" };
   const pillConf = (c) => (c ? h("span", { class: "conf " + c.nivel, title: c.razones.join(" · ") }, h("i", {}), ETI_CONF[c.nivel] + " · " + c.puntos) : h("span", { class: "pocos" }, "—"));
-  function costo5(f) {  // obra + 5 años de mantención del lugar (hipótesis)
+  function costo5(f) {  // obra similar + 5 años de mantención referencial del lugar
     if (f.oculto || !f.gan) return null;
     const r = rangoCosto(f.gan.id);
     if (!r) return null;
@@ -433,8 +433,8 @@
       g ? tile("Confianza de los resultados", ETI_CONF[g.nivel] + " · " + g.puntos + "/100", g.razones[0], g.puntos) : null,
       tile("Dijeron entrar por QR", fmt(qr, 0) + " %", fmt(part.via_qr, 0) + " de " + fmt(part.total, 0) + " votos (aún sin firma)", qr)];
     if (r.publicado) {
-      k.push(tile("Inversión aprox. de lo más pedido", T.conRes.length && T.inv.length ? moneda(T.tMin) + " a " + moneda(T.tMax) : "—", T.porCotizar ? T.porCotizar + " lugar(es) por cotizar · hipótesis" : "hipótesis (sin verificar)"),
-        tile("Costo a 5 años (obra + mantención)", T.c5max ? moneda(T.c5min) + " a " + moneda(T.c5max) : "—", "mantención: $1.625 a $2.962 por m² al año (hipótesis)"),
+      k.push(tile("Inversión aprox. de lo más pedido", T.conRes.length && T.inv.length ? moneda(T.tMin) + " a " + moneda(T.tMax) : "—", T.porCotizar ? T.porCotizar + " lugar(es) por cotizar · ref. obras similares" : "según obras similares financiadas en Chile"),
+        tile("Costo a 5 años (obra + mantención)", T.c5max ? moneda(T.c5min) + " a " + moneda(T.c5max) : "—", "obras similares + mantención ref. Mi Parque ($1.625–$2.962/m²/año)"),
         tile("Coincide con la recomendación del satélite", T.conRes.length ? fmt(T.coincide, 0) + " de " + fmt(T.conRes.length, 0) : "—", "lo más pedido estaba entre las opciones recomendadas", T.conRes.length ? 100 * T.coincide / T.conRes.length : null));
     } else {
       k.push(tile("Días para el cierre", fmt(estado.epoca.dias_restantes, 0), "cierra el " + estado.epoca.cierra_en.slice(0, 10)), tile("Porcentajes", "Al cierre", "se publican cuando termina la votación"));
@@ -467,7 +467,7 @@
     if (bajos.length) out.push({ n: "riesgo", x: [b(bajos.length), bajos.length === 1 ? " lugar tiene confianza baja" : " lugares tienen confianza baja", " (pocos votos o patrones raros, como muchos votos en una hora): conviene verificar", bajos.length === 1 ? "lo" : "los", " antes de decidir."] });
     if (r.publicado) {
       const T = totales();
-      if (T.c5max) out.push({ n: "info", x: ["Hacer lo más pedido en cada lugar costaría ", b(moneda(T.c5min) + " a " + moneda(T.c5max)), " en 5 años, contando obra y mantención (hipótesis)."] });
+      if (T.c5max) out.push({ n: "info", x: ["Hacer lo más pedido en cada lugar costaría ", b(moneda(T.c5min) + " a " + moneda(T.c5max)), " en 5 años, contando obras similares financiadas y mantención referencial."] });
     }
     return out.slice(0, 6);
   }
@@ -500,6 +500,30 @@
       ...ids.map((id) => { const fo = estado.fondos.fondos[id]; return h("div", { class: "fondo" }, h("b", {}, fo.nombre), h("small", {}, fo.enfoque), h("small", {}, "Piden: " + fo.requisito_evidencia)); }),
       h("p", { class: "nota" }, "Este informe aporta parte de esa evidencia: demanda vecinal medida, mediciones del lugar y participación local.")];
   }
+  function bloqueObrasSimilares(f) {
+    const vistos = new Set();
+    const items = [];
+    const fuentes = [f.gan, ...f.opciones.filter((o) => !f.gan || o.id !== f.gan.id)];
+    for (const op of fuentes) {
+      if (!op) continue;
+      const cat = estado.catalogo[op.id];
+      if (!cat || !cat.ejemplos || !cat.ejemplos.length) continue;
+      for (const ej of cat.ejemplos) {
+        const key = ej.url + "|" + ej.titulo;
+        if (vistos.has(key)) continue;
+        vistos.add(key);
+        items.push({ opcion: cat.nombre, titulo: ej.titulo, url: ej.url });
+        if (items.length >= 4) break;
+      }
+      if (items.length >= 4) break;
+    }
+    if (!items.length) return null;
+    return [
+      h("h2", {}, "Obras similares financiadas (referencia)"),
+      h("p", { class: "nota" }, "Proyectos reales en Chile que respaldan los rangos de inversión mostrados."),
+      ...items.map((x) => h("div", { class: "fondo" }, h("b", {}, x.opcion), h("small", {}, h("a", { href: x.url, target: "_blank", rel: "noopener noreferrer" }, x.titulo)))),
+    ];
+  }
   function abrirDetalle(sid) {
     estado.activa = sid;
     document.querySelectorAll("#cuerpo tr").forEach((tr) => tr.classList.toggle("activa", tr.dataset.sid === sid));
@@ -508,8 +532,8 @@
     const c = confDe(sid), c5 = costo5(f);
     const izq = [h("h2", {}, s.nombre), h("p", { class: "nota" }, s.tipo + " · " + fmt(s.area_m2, 0) + " m² · " + s.semaforo.etiqueta + (s.semaforo.indice != null ? " (índice " + fmt(s.semaforo.indice, 0) + " de 100)" : "")), h("p", {}, s.resumen)];
     for (const k of ["sombra", "calor", "verde", "vecinos"]) if (s.datos[k]) izq.push(h("div", { class: "dato" }, h("b", {}, s.datos[k].titulo + (s.datos[k].etiqueta ? ": " + s.datos[k].etiqueta : "")), h("small", {}, s.datos[k].texto)));
-    izq.push(h("div", { class: "dato" }, h("b", {}, "Mantención aproximada"), h("small", {}, moneda(s.mantencion_M[0]) + " a " + moneda(s.mantencion_M[1]) + " al año (hipótesis: $1.625 a $2.962 por m²)")));
-    if (c5) izq.push(h("div", { class: "dato" }, h("b", {}, "Costo a 5 años"), h("small", {}, moneda(c5[0]) + " a " + moneda(c5[1]) + " (obra de lo más pedido + 5 años de mantención; hipótesis)")));
+    izq.push(h("div", { class: "dato" }, h("b", {}, "Mantención aproximada"), h("small", {}, moneda(s.mantencion_M[0]) + " a " + moneda(s.mantencion_M[1]) + " al año (referencia Fundación Mi Parque: $1.625 a $2.962 por m²)")));
+    if (c5) izq.push(h("div", { class: "dato" }, h("b", {}, "Costo a 5 años"), h("small", {}, moneda(c5[0]) + " a " + moneda(c5[1]) + " (obra similar financiada + 5 años de mantención referencial)")));
     if (s.poca_confianza) izq.push(h("p", { class: "nota" }, "La lectura satelital tiene poca confianza: verificar en terreno."));
     const der = [];
     if (c) der.push(h("h2", {}, "Confianza del resultado"), h("p", {}, pillConf(c)), h("ul", { class: "razones" }, c.razones.map((x) => h("li", {}, x))));
@@ -522,6 +546,8 @@
       const rec = s.opciones.map((o) => o.id);
       der.push(h("p", { class: "nota" }, f.gan && rec.includes(f.gan.id) ? "Lo más pedido coincide con lo que recomendaba el análisis satelital." : "Lo más pedido es distinto de lo que recomendaba el análisis satelital: conviene revisarlo con el municipio."));
       if (f.otros.length) der.push(h("p", { class: "nota" }, "Ideas escritas por vecinos (texto sin revisar):"), h("ul", {}, f.otros.map((t) => h("li", {}, t))));
+      const obras = bloqueObrasSimilares(f);
+      if (obras) der.push(...obras);
       const fondos = bloqueFondos(f);
       if (fondos) der.push(...fondos);
     }
@@ -749,7 +775,7 @@
       f.opciones.forEach((o) => l.push("  - " + nombreOpcion(o.id) + ": " + fmt(o.pct) + " % (" + o.votos + " votos)"));
       l.push("");
     }
-    l.push("---", "Los rangos de costo son obras similares financiadas o hipótesis del catálogo (sin verificar). La mantención usa $1.625 a $2.962 por m² al año (hipótesis). Los colores comparan cada lugar con los demás sitios escaneados.");
+    l.push("---", "Los rangos de inversión se basan en obras similares financiadas en Chile (Subdere, GORE, JUNJI y municipios). La mantención usa la referencia de Fundación Mi Parque ($1.625 a $2.962 por m² al año), sujeta a licitación municipal. Los colores comparan cada lugar con los demás sitios escaneados.");
     return l.join("\n");
   }
   function descargarMarkdown() {

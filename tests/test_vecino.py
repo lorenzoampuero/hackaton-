@@ -64,12 +64,16 @@ def test_catalogo_no_inventa_costos():
     for o in CATALOGO["opciones"]:
         lo, hi = o["costo_min_M"], o["costo_max_M"]
         assert (lo is None) == (hi is None)
+        assert "hipótesis" not in o["costo_nota"].lower()
         if lo is not None:
             assert 0 < lo <= hi and o["costo_nota"]
-        if o["costo_nota"].startswith("rango de obras similares"):
+        if o["costo_nota"].startswith("rango de obras similares") or o["costo_nota"].startswith("rango de 9 obras similares"):
             assert o["ejemplos"], f"{o['id']} dice tener obras similares pero no cita ninguna"
         for ej in o["ejemplos"]:
             assert ej["url"].startswith("https://")
+            assert "vertexaisearch" not in ej["url"]
+            if "titulo_vecino" in ej:
+                assert "$" not in ej["titulo_vecino"]
 
 
 @pytest.mark.skipif(not (WEB_DATA / "vecino" / "zonas.json").exists(), reason="corre antes el paso 08")
