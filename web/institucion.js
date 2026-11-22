@@ -518,11 +518,17 @@
       if (items.length >= 4) break;
     }
     if (!items.length) return null;
-    return [
-      h("h2", {}, "Obras similares financiadas (referencia)"),
-      h("p", { class: "nota" }, "Proyectos reales en Chile que respaldan los rangos de inversión mostrados."),
-      ...items.map((x) => h("div", { class: "fondo" }, h("b", {}, x.opcion), h("small", {}, h("a", { href: x.url, target: "_blank", rel: "noopener noreferrer" }, x.titulo)))),
-    ];
+    const panel = h("div", { class: "fuentes-panel", hidden: true },
+      h("p", { class: "nota" }, "Obras similares financiadas en Chile que respaldan los rangos mostrados."),
+      ...items.map((x) => h("div", { class: "fondo" }, h("b", {}, x.opcion), h("small", {}, h("a", { href: x.url, target: "_blank", rel: "noopener noreferrer" }, x.titulo)))));
+    const btn = h("button", { class: "btn-fuentes", type: "button", "aria-expanded": "false" }, "Consultar fuentes (" + items.length + ") ▾");
+    btn.addEventListener("click", () => {
+      const abierta = panel.hidden;
+      panel.hidden = !abierta;
+      btn.setAttribute("aria-expanded", String(abierta));
+      btn.textContent = abierta ? "Ocultar fuentes ▴" : "Consultar fuentes (" + items.length + ") ▾";
+    });
+    return [h("div", { class: "fuentes-wrap" }, btn, panel)];
   }
   function abrirDetalle(sid) {
     estado.activa = sid;
