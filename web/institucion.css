@@ -1,0 +1,50 @@
+:root { --acento: #1f7a4d; --tinta: #1f2a30; --suave: #5b6b75; --linea: #e3e8ea; --verde: #2e9e5b; --amarillo: #f2b01e; --rojo: #d64545; --gris: #8a949e; font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+* { box-sizing: border-box; }
+body { margin: 0; color: var(--tinta); background: #f4f7f7; }
+.top { display: flex; align-items: center; justify-content: space-between; padding: 14px 24px; background: #fff; border-bottom: 1px solid var(--linea); }
+.marca { font-weight: 700; display: flex; align-items: center; gap: 10px; }
+.marca small { color: var(--suave); font-weight: 500; }
+.logo { background: var(--acento); color: #fff; border-radius: 50%; width: 30px; height: 30px; display: grid; place-items: center; font-size: 12px; }
+.vol { color: var(--acento); font-size: 14px; }
+main { max-width: 1120px; margin: 0 auto; padding: 20px; }
+.filtros { display: flex; flex-wrap: wrap; gap: 14px; align-items: end; margin-bottom: 14px; }
+label { font-size: 13px; color: var(--suave); display: grid; gap: 4px; }
+select, input { font: inherit; padding: 9px 10px; border: 1px solid var(--linea); border-radius: 10px; background: #fff; color: var(--tinta); min-width: 200px; }
+.acciones { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; margin-left: auto; }
+.btn { border: 0; background: var(--acento); color: #fff; font: inherit; font-weight: 600; padding: 10px 14px; border-radius: 10px; cursor: pointer; }
+.btn.sec { background: #e8eeef; color: var(--tinta); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.aviso-demo { background: #ffe4e4; color: #8f2222; font-weight: 700; padding: 10px 14px; border-radius: 10px; margin-bottom: 12px; }
+.aviso { background: #fff4e0; border: 1px solid #f6d79b; padding: 10px 14px; border-radius: 10px; margin-bottom: 12px; }
+.resumen { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.tarjeta { background: #fff; border: 1px solid var(--linea); border-radius: 14px; padding: 14px; }
+.tarjeta b { display: block; font-size: 22px; margin-top: 2px; }
+.tarjeta span { color: var(--suave); font-size: 13px; }
+.tabla-caja { background: #fff; border: 1px solid var(--linea); border-radius: 14px; overflow: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14px; }
+th, td { padding: 11px 14px; text-align: left; border-bottom: 1px solid var(--linea); vertical-align: top; }
+th { background: #f8fafa; font-size: 12.5px; color: var(--suave); text-transform: none; }
+.num { text-align: right; white-space: nowrap; }
+tbody tr { cursor: pointer; } tbody tr:hover { background: #f4faf6; } tbody tr.activa { background: #e9f6ee; }
+.punto { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 7px; vertical-align: -1px; }
+.pct { font-weight: 700; color: var(--acento); }
+.pocos { color: var(--suave); font-size: 13px; }
+.detalle { margin-top: 16px; }
+.detalle .caja { background: #fff; border: 1px solid var(--linea); border-radius: 14px; padding: 18px; }
+.detalle h2 { margin: 0 0 4px; font-size: 18px; }
+.cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.barra { margin: 8px 0; } .barra .fila { display: flex; justify-content: space-between; font-size: 14px; margin-bottom: 3px; }
+.pista { background: #eef2f3; border-radius: 999px; height: 10px; overflow: hidden; } .relleno { background: var(--acento); height: 100%; }
+.dato { padding: 6px 0; border-top: 1px solid var(--linea); font-size: 14px; } .dato small { color: var(--suave); display: block; }
+.nota { color: var(--suave); font-size: 13px; }
+.otros li { font-size: 14px; margin: 4px 0; }
+.admin { margin-top: 24px; background: #fff; border: 1px solid var(--linea); border-radius: 14px; padding: 12px 16px; }
+.admin summary { cursor: pointer; font-weight: 600; }
+.pie { color: var(--suave); font-size: 12.5px; margin-top: 12px; }
+@media (max-width: 760px) { .cols { grid-template-columns: 1fr; } .acciones { margin-left: 0; } }
+@media print {
+  .no-print { display: none !important; }
+  body { background: #fff; } main { max-width: none; padding: 0; }
+  .tabla-caja, .tarjeta, .detalle .caja { border-color: #bbb; }
+  tbody tr { cursor: default; }
+}

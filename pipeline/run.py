@@ -29,8 +29,9 @@ PASOS_GLOBALES = {
     "04": "04_prioridad",
     "05": "05_senales",
     "06": "06_paquete_caso",
+    "08": "08_vecino",
 }
-ORDEN = ["01", "02", "02b", "02c", "03", "03b", "04", "05", "06"]
+ORDEN = ["01", "02", "02b", "02c", "03", "03b", "04", "05", "06", "08"]
 
 
 def agregar_comuna(nombre: str) -> str:

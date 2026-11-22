@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="es-CL">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pulmón Urbano — Vista institucional</title>
+  <link rel="stylesheet" href="institucion.css">
+</head>
+<body>
+  <header class="top no-print">
+    <div class="marca"><span class="logo" aria-hidden="true">PU</span> Pulmón Urbano <small>Vista institucional</small></div>
+    <a class="vol" href="vecino.html">Ir a la vista del vecino</a>
+  </header>
+
+  <main>
+    <section class="filtros no-print" aria-label="Filtros">
+      <label>Comuna <select id="sel-comuna"></select></label>
+      <label>Votación <select id="sel-epoca"></select></label>
+      <div class="acciones">
+        <button id="btn-md" class="btn" type="button">Descargar informe (Markdown)</button>
+        <button id="btn-pdf" class="btn sec" type="button">Imprimir o guardar PDF</button>
+      </div>
+    </section>
+
+    <div id="aviso"></div>
+    <section id="resumen" class="resumen" aria-live="polite"></section>
+
+    <section class="tabla-caja">
+      <table id="tabla">
+        <thead>
+          <tr><th>Lugar</th><th class="num">Votos</th><th>Lo que más piden</th><th class="num">Inversión aprox. de eso</th><th class="num">Mantención al año</th></tr>
+        </thead>
+        <tbody id="cuerpo"></tbody>
+      </table>
+    </section>
+
+    <section id="detalle" class="detalle" aria-live="polite"></section>
+
+    <details class="admin no-print">
+      <summary>Administrar votaciones</summary>
+      <p class="nota">Necesitas el token de administración (variable PULMON_ADMIN_TOKEN en el servidor).</p>
+      <label>Token <input id="token" type="password" autocomplete="off"></label>
+      <div class="acciones">
+        <button id="btn-cerrar" class="btn sec" type="button">Cerrar esta votación ahora</button>
+        <label>Nueva votación (nombre) <input id="nuevo-nombre" type="text" value="Votación 2" maxlength="80"></label>
+        <label>Días abierta <input id="nuevo-dias" type="number" min="1" max="90" value="14"></label>
+        <button id="btn-nueva" class="btn sec" type="button">Abrir nueva votación</button>
+      </div>
+      <p id="msg-admin" class="nota" role="status"></p>
+    </details>
+  </main>
+  <script src="institucion.js"></script>
+</body>
+</html>

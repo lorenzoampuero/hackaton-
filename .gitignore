@@ -24,3 +24,6 @@ data/raw/
 .vscode/
 .idea/
 *.swp
+
+# Votos locales (SQLite) de la votacion vecinal
+data/votos_local.db

@@ -29,6 +29,10 @@ mod_07 = importlib.import_module("pipeline.07_informe_ia")
 
 app = FastAPI(title="Pulmón Urbano — API y Servidor", docs_url=None, redoc_url=None)
 
+from app.votos import router as router_votos  # noqa: E402  (votación vecinal: épocas, votos y resultados)
+
+app.include_router(router_votos)
+
 _llamadas: deque[float] = deque()
 _candado = threading.Lock()
 _lock_db = threading.Lock()

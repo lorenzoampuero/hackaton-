@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "pulmon-urbano-local",
+      "runtimeExecutable": "/Users/mirenchu/Downloads/hackaton /.venv/bin/python",
+      "runtimeArgs": ["-m", "uvicorn", "app.servidor:app", "--port", "8765", "--app-dir", "/Users/mirenchu/Downloads/hackaton "],
+      "port": 8765
+    }
+  ]
+}
