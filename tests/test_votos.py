@@ -143,3 +143,26 @@ def test_estado_epoca_por_fechas():
     assert votos.estado_epoca(base, votos._parse(base["cierra_en"]) + timedelta(seconds=1)) == "cerrado"
     futura = votos.nueva_epoca("cerro_navia", "y", dias=5, abre=votos._ahora() + timedelta(days=2))
     assert votos.estado_epoca(futura) == "proximo"
+
+
+def test_modo_vercel_ids_deterministicos_y_demo_automatica(tmp_path, monkeypatch):
+    """En Vercel cada instancia tiene su propia memoria: el id de la época y la demo deben ser iguales en todas."""
+    monkeypatch.setenv("PULMON_VOTOS_BACKEND", "local")
+    monkeypatch.setenv("PULMON_DEMO_AUTO", "1")
+    servidor = importlib.import_module("app.servidor")
+    resultados = []
+    for nombre in ("instancia_a.db", "instancia_b.db"):  # dos instancias que no comparten disco
+        monkeypatch.setenv("PULMON_VOTOS_DB", str(tmp_path / nombre))
+        votos._cache_almacen.update({"t": 0.0, "obj": None, "clave": None})
+        votos._demo_listo.clear()
+        c = TestClient(servidor.app)
+        zonas = c.get("/api/votacion/zonas").json()["zonas"]
+        ep = next(z for z in zonas if z["slug"] == "cerro_navia")["epoca"]
+        assert ep["id"].startswith("auto-cerro_navia-") and ep["estado"] == "abierto"
+        per = c.get("/api/votacion/periodos", params={"comuna": "cerro_navia"}).json()["periodos"]
+        demo = next(p for p in per if p["demo"])
+        assert demo["id"] == "demo-cerro_navia" and demo["estado"] == "cerrado"
+        res = c.get("/api/votacion/resultados", params={"periodo_id": demo["id"]}).json()
+        assert res["publicado"] and res["total_votos"] == 480
+        resultados.append((ep["id"], demo["id"]))
+    assert resultados[0] == resultados[1]

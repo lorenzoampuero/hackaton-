@@ -45,3 +45,21 @@ python3 -m http.server 8765 -d web
 - **NDMI** mide humedad foliar en hojas (20 m), no humedad directa del suelo.
 - **Open-Meteo** se utiliza bajo licencia `CC BY 4.0` no comercial (para uso comercial se requiere plan comercial o red oficial DMC).
 - Los costos en CLP y planes **B2B2G / Compra Ágil** corresponden a **hipótesis (sin verificar)**.
+
+## Vista del vecino y votación (nuevo)
+
+- `web/vecino.html`: mapa grande para vecinos. Eligen su comuna (o entran con un QR: `vecino.html?zona=cerro_navia&sitio=<id>&qr=1`), tocan un punto, ven 4 datos en palabras simples y votan qué les gustaría que se construya (con un campo «Otro»).
+- `web/institucion.html`: vista para instituciones. Muestra los votos por lugar, los porcentajes (solo cuando la votación cierra), la inversión aproximada y exporta el informe a Markdown o PDF.
+- Los datos simples y las opciones recomendadas salen del paso 08 (`python -m pipeline.run --pasos 08`) y del catálogo `data/opciones_votacion.json` (cada rango de costo trae su fuente o dice «por cotizar»).
+- Los votos se guardan en Supabase si existen las tablas (`supabase/migrations/20261122_votacion.sql`, se ejecuta una vez en tu proyecto) y, si no, en SQLite local (`data/votos_local.db`).
+- `PULMON_ADMIN_TOKEN` (en `.env`) activa los botones de cerrar/abrir votaciones; `PULMON_MIN_VOTOS` fija el mínimo de votos para mostrar porcentajes (por defecto 10).
+- `python -m app.votos --demo` crea una votación cerrada con votos SIMULADOS (marcados como demo) para mostrar cómo se ven los resultados.
+
+## Despliegue en Vercel
+
+Vercel no lee `.env`: las variables se cargan en el panel (Settings → Environment Variables).
+
+- **Mínimo para una demostración con votos simulados:** `PULMON_DEMO_AUTO=1`. Crea sola la votación cerrada con votos SIMULADOS de cada comuna y una votación abierta de 14 días. Sin Supabase los votos viven en memoria de cada instancia y se pierden: sirve para mostrar, no para una votación real.
+- **Para guardar votos de verdad:** `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY` y `SUPABASE_SECRET_KEY` (esta última, como variable sensible), y ejecutar antes los SQL de `supabase/migrations/` en tu proyecto.
+- **Administración (cerrar y abrir votaciones):** `PULMON_ADMIN_TOKEN` con un texto largo y aleatorio; opcional `PULMON_VOTOS_SAL` (otro texto aleatorio para anonimizar los votos) y `PULMON_MIN_VOTOS`.
+- **Informes con IA:** `OPENAI_API_KEY`, `OPENAI_BASE_URL` y `PULMON_LLM_MODEL`. Un informe tarda cerca de 40 s: el límite de tiempo de la función en el plan gratuito de Vercel puede cortarlo.

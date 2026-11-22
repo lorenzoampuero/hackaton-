@@ -53,6 +53,35 @@ def _parse(s: str) -> datetime:
     return datetime.fromisoformat(s.replace("Z", "+00:00"))
 
 
+def _verdadero(nombre: str) -> bool:
+    cargar_env()
+    return os.environ.get(nombre, "").strip().lower() in ("1", "true", "si", "sí", "yes")
+
+
+def epocas_automaticas() -> bool:
+    """En Vercel (o con PULMON_EPOCAS_AUTO=1) las épocas son ventanas fijas de 14 días con id determinístico.
+
+    Así todas las instancias del servidor (que no comparten memoria) hablan de la misma votación.
+    """
+    return _verdadero("PULMON_EPOCAS_AUTO") or _verdadero("PULMON_DEMO_AUTO") or bool(os.environ.get("VERCEL"))
+
+
+def demo_automatica() -> bool:
+    """Con PULMON_DEMO_AUTO=1 y almacén local, se crea sola la votación cerrada con votos SIMULADOS."""
+    return _verdadero("PULMON_DEMO_AUTO")
+
+
+def ventana_auto(comuna_slug: str, ahora: datetime | None = None) -> dict[str, Any]:
+    ahora = ahora or _ahora()
+    n = int(ahora.timestamp() // (DIAS_EPOCA_POR_DEFECTO * 86400))
+    abre = datetime.fromtimestamp(n * DIAS_EPOCA_POR_DEFECTO * 86400, tz=timezone.utc)
+    return {
+        "id": f"auto-{comuna_slug}-{n}", "comuna_slug": comuna_slug, "nombre": f"Votación del {abre:%d-%m-%Y}",
+        "abre_en": _iso(abre), "cierra_en": _iso(abre + timedelta(days=DIAS_EPOCA_POR_DEFECTO)),
+        "cerrado_manual": False, "demo": False, "creado_en": _iso(_ahora()),
+    }
+
+
 def min_votos_publicar() -> int:
     cargar_env()
     try:
@@ -181,6 +210,14 @@ class AlmacenLocal:
         except sqlite3.IntegrityError:
             return False
 
+    def insertar_votos(self, filas: list[dict[str, Any]]) -> int:
+        """Inserta muchos votos de una vez (ignora los repetidos). Devuelve cuántos entraron."""
+        datos = [(v["id"], v["periodo_id"], v["comuna_slug"], v["site_id"], v["opcion_id"], v.get("otro_texto"), v.get("edad_rango"), v["dispositivo_hash"], int(v.get("via_qr", False)), int(v.get("demo", False)), v["creado_en"]) for v in filas]
+        with _lock, self._con() as con:
+            antes = con.execute("select count(*) from votacion_votos").fetchone()[0]
+            con.executemany("insert or ignore into votacion_votos (id, periodo_id, comuna_slug, site_id, opcion_id, otro_texto, edad_rango, dispositivo_hash, via_qr, demo, creado_en) values (?,?,?,?,?,?,?,?,?,?,?)", datos)
+            return con.execute("select count(*) from votacion_votos").fetchone()[0] - antes
+
     def votos_de_periodo(self, periodo_id: str) -> list[dict[str, Any]]:
         with _lock, self._con() as con:
             return [dict(r) for r in con.execute("select site_id, opcion_id, otro_texto, edad_rango, via_qr from votacion_votos where periodo_id = ?", (periodo_id,))]
@@ -229,6 +266,12 @@ class AlmacenSupabase:
             return False
         r.raise_for_status()
         return True
+
+    def insertar_votos(self, filas: list[dict[str, Any]]) -> int:
+        for i in range(0, len(filas), 500):
+            r = httpx.post(f"{self.url}/rest/v1/votacion_votos?on_conflict=periodo_id,site_id,dispositivo_hash", headers=self._h("return=minimal,resolution=ignore-duplicates"), json=filas[i:i + 500], timeout=30.0)
+            r.raise_for_status()
+        return len(filas)
 
     def votos_de_periodo(self, periodo_id: str) -> list[dict[str, Any]]:
         salida, desde = [], 0
@@ -299,6 +342,14 @@ def epoca_actual(almacen: Any, comuna_slug: str) -> dict[str, Any]:
     for p in reales:
         if estado_epoca(p) == "abierto":
             return p
+    if epocas_automaticas():
+        nueva = ventana_auto(comuna_slug)
+        if not any(p["id"] == nueva["id"] for p in reales):
+            try:
+                almacen.crear_periodo(nueva)
+            except Exception:  # otra instancia la creó al mismo tiempo
+                pass
+        return almacen.obtener_periodo(nueva["id"]) or nueva
     if not reales:
         nueva = nueva_epoca(comuna_slug, "Votación 1")
         almacen.crear_periodo(nueva)
@@ -360,6 +411,7 @@ def estado() -> dict[str, Any]:
 @router.get("/zonas")
 def zonas() -> dict[str, Any]:
     alm = obtener_almacen()
+    asegurar_demo(alm)
     salida = []
     for z in _zonas():
         p = epoca_actual(alm, z["slug"])
@@ -370,6 +422,7 @@ def zonas() -> dict[str, Any]:
 @router.get("/periodos")
 def periodos(comuna: str = Query(...)) -> dict[str, Any]:
     alm = obtener_almacen()
+    asegurar_demo(alm)
     epoca_actual(alm, comuna)
     return {"periodos": [describir_epoca(p) for p in alm.periodos(comuna)]}
 
@@ -475,7 +528,7 @@ def admin_cerrar(pedido: PedidoCerrar, x_admin_token: str | None = Header(defaul
 # --------------------------------------------------------------------------------------------------
 # Datos de demostración (votos simulados, marcados como demo en la base y en la página)
 # --------------------------------------------------------------------------------------------------
-def sembrar_demo(almacen: Any, comuna_slug: str = "cerro_navia", sitios: int = 12, votos_por_sitio: int = 40, semilla: int = 7) -> dict[str, Any]:
+def sembrar_demo(almacen: Any, comuna_slug: str = "cerro_navia", sitios: int = 12, votos_por_sitio: int = 40, semilla: int = 7, id_fijo: str | None = None) -> dict[str, Any]:
     """Crea una votación cerrada con votos SIMULADOS. Sirve solo para mostrar cómo se ven los resultados."""
     rng = random.Random(semilla)
     datos = _sitios_de(comuna_slug)
@@ -483,22 +536,44 @@ def sembrar_demo(almacen: Any, comuna_slug: str = "cerro_navia", sitios: int = 1
         raise ValueError(f"No hay datos de la comuna {comuna_slug}; corre el paso 08.")
     abre = _ahora() - timedelta(days=30)
     epoca = nueva_epoca(comuna_slug, "Votación de demostración (votos simulados)", dias=14, demo=True, abre=abre)
+    if id_fijo:
+        epoca["id"] = id_fijo
     almacen.crear_periodo(epoca)
     elegidos = sorted(datos.values(), key=lambda s: -s["area_m2"])[:sitios]
-    n = 0
+    filas = []
     for s in elegidos:
         ids = [o["id"] for o in s["opciones"]]
         pesos = [0.45, 0.25, 0.15, 0.10, 0.05][: len(ids)]
-        for _ in range(votos_por_sitio):
+        for k in range(votos_por_sitio):
             opcion = rng.choices(ids, weights=pesos)[0] if rng.random() > 0.08 else "otro"
-            otro = "Una feria vecinal los fines de semana (simulado)" if opcion == "otro" else None
-            ok = almacen.insertar_voto({
+            filas.append({
                 "id": str(uuid.uuid4()), "periodo_id": epoca["id"], "comuna_slug": comuna_slug, "site_id": s["id"], "opcion_id": opcion,
-                "otro_texto": otro, "edad_rango": rng.choice(sorted(RANGOS_EDAD)), "dispositivo_hash": hashlib.sha256(f"demo:{rng.random()}".encode()).hexdigest(),
+                "otro_texto": "Una feria vecinal los fines de semana (simulado)" if opcion == "otro" else None,
+                "edad_rango": rng.choice(sorted(RANGOS_EDAD)), "dispositivo_hash": hashlib.sha256(f"demo:{comuna_slug}:{s['id']}:{k}".encode()).hexdigest(),
                 "via_qr": rng.random() < 0.5, "demo": True, "creado_en": _iso(abre + timedelta(hours=rng.randint(1, 300))),
             })
-            n += int(ok)
+    n = almacen.insertar_votos(filas)
     return {"epoca": describir_epoca(epoca), "votos": n}
+
+
+_demo_listo: set[str] = set()
+
+
+def asegurar_demo(almacen: Any) -> None:
+    """Con PULMON_DEMO_AUTO=1 y almacén local (p. ej. Vercel sin Supabase), crea la votación simulada de cada comuna."""
+    if not demo_automatica() or almacen.nombre != "local":
+        return
+    clave = str(getattr(almacen, "ruta", ""))
+    if clave in _demo_listo:
+        return
+    for z in _zonas():
+        pid = f"demo-{z['slug']}"
+        if almacen.obtener_periodo(pid) is None:
+            try:
+                sembrar_demo(almacen, z["slug"], id_fijo=pid)
+            except Exception:
+                pass
+    _demo_listo.add(clave)
 
 
 if __name__ == "__main__":

@@ -27,3 +27,6 @@ data/raw/
 
 # Votos locales (SQLite) de la votacion vecinal
 data/votos_local.db
+
+# Configuracion local del editor (rutas de esta maquina)
+.claude/

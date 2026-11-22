@@ -70,8 +70,14 @@ textarea, select { width: 100%; font: inherit; font-size: 14px; border: 2px soli
 @media (max-width: 760px) {
   .barra { flex-wrap: wrap; gap: 8px; } .marca { display: none; } .enlace-inst { display: none; }
   .zonas { flex: 1; }
+  .zona { padding: 8px 10px; font-size: 14px; }
   .panel { left: 0; right: 0; bottom: 0; top: auto; width: 100%; max-width: none; border-radius: 20px 20px 0 0; max-height: 62vh; transition: max-height .2s; }
   .panel.baja { max-height: 52px; }
   .panel-asa { display: block; border: 0; background: transparent; padding: 10px 0 6px; cursor: pointer; width: 100%; }
   .panel-asa::before { content: ""; display: block; width: 44px; height: 5px; border-radius: 3px; background: #c9d2d6; margin: 0 auto; }
+}
+
+@media (max-width: 420px) {
+  .zonas { gap: 2px; padding: 4px; }
+  .zona { padding: 8px 7px; font-size: 13px; }
 }

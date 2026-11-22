@@ -118,7 +118,10 @@
   function ajustarVista() {
     estado.mapa.invalidateSize();
     const b = estado.datos && estado.datos.comuna.bbox;
-    if (b && !estado.sel) estado.mapa.fitBounds([[b[1], b[0]], [b[3], b[2]]], { padding: [30, 30] });
+    if (b && !estado.sel) {
+      const grande = window.innerWidth > 760;  // en pantallas grandes el panel tapa la izquierda; en celular, abajo
+      estado.mapa.fitBounds([[b[1], b[0]], [b[3], b[2]]], { paddingTopLeft: [grande ? 400 : 20, 70], paddingBottomRight: [20, grande ? 30 : Math.round(window.innerHeight * 0.55)] });
+    }
   }
 
   function pintarMarcadores() {
@@ -179,7 +182,7 @@
         leyenda(),
         h("p", { class: "nota" }, "Los colores comparan cada lugar con los demás que escaneamos con satélite en las 4 comunas. No son un juicio absoluto."),
       );
-      raiz.replaceChildren(...nodos);
+      raiz.replaceChildren(...nodos.filter(Boolean));
       return;
     }
     const s = estado.sel;
@@ -194,7 +197,7 @@
       textoEpoca(),
       bloqueVoto(s),
     );
-    raiz.replaceChildren(...nodos);
+    raiz.replaceChildren(...nodos.filter(Boolean));
     raiz.scrollTop = 0;
   }
 
